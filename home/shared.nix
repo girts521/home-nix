@@ -22,6 +22,26 @@
   #   source = ./scripts/myscript;
   #   executable = true;
   # };
+  #
+  home.file.".local/bin/rssh" = {
+  source = ../scripts/rssh;
+  executable = true;
+  };
+
+  home.file.".local/bin/notes" = {
+  source = ../scripts/notes;
+  executable = true;
+  };
+
+  home.file.".local/bin/quicknote" = {
+    source = ../scripts/quicknote;
+    executable = true;
+  };
+
+  home.file.".local/bin/powermenu.sh" = {
+  source = ../scripts/powermenu.sh;
+  executable = true;
+  };
 
   programs.home-manager.enable = true;
 

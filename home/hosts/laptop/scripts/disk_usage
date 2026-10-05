@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+default_hosts=(
+  reflex-lab-19
+  reflex-lab-18
+  reflex-lab-17
+  reflex-lab-16
+  reflex-lab-15
+  reflex-lab-14
+  reflex-lab-13
+  reflex-lab-12
+  reflex-lab-11
+  reflex-lab-10
+  reflex-lab-9
+  reflex-lab-8
+  reflex-lab-7
+  reflex-lab-6
+  reflex-lab-5
+  reflex-lab-4
+  reflex-lab-3
+  reflex-lab-2
+  reflex-satops-4
+  reflex-satops-5
+)
+
+hosts=("${default_hosts[@]}")
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+  --hosts)
+    IFS=',' read -ra hosts <<<"$2"
+    shift 2
+    ;;
+  *)
+    echo "Unknown argument: $1"
+    echo "Usage: $0 [--hosts lab-12,lab-14]"
+    exit 1
+    ;;
+  esac
+done
+
+printf "%-20s %-10s %-10s %-10s\n" "HOST" "TOTAL" "FREE" "USED"
+printf "%-20s %-10s %-10s %-10s\n" "----" "-----" "----" "----"
+
+for host in "${hosts[@]}"; do
+  # Allow both lab-12 and reflex-lab-12
+  if [[ "$host" != reflex-* ]]; then
+    hostname="reflex-$host"
+  else
+    hostname="$host"
+  fi
+
+  result=$(ssh \
+    -o BatchMode=yes \
+    -o ConnectTimeout=3 \
+    "$hostname" \
+    "df -BG --output=size,avail,pcent / | tail -1" \
+    2>/dev/null)
+
+  if [[ -z "$result" ]]; then
+    printf "%-20s %s\n" "$host" "UNREACHABLE"
+    continue
+  fi
+
+  read -r total free used <<<"$result"
+
+  printf "%-20s %-10s %-10s %-10s\n" \
+    "$host" "$total" "$free" "$used"
+done

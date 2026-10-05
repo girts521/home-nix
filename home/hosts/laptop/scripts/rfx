@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+REPO="$HOME/dev/reflex/digital_infrastructure/digital_infrastructure_setup"
+INVOKE="$REPO/.venv/bin/invoke"
+
+if [[ ! -x "$INVOKE" ]]; then
+  echo "Invoke environment not found: $INVOKE"
+  echo "Enter the repo once and let direnv/uv initialize it."
+  exit 1
+fi
+
+exec "$INVOKE" -r "$REPO" "$@"

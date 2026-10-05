@@ -13,11 +13,11 @@
     homeConfigurations = {
       "masterpc" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        modules = [ ./home/shared.nix ./home/hosts/masterpc.nix ];
+        modules = [ ./home/shared.nix ./home/hosts/masterpc/masterpc.nix ];
       };
       "laptop" = home-manager.lib.homeManagerConfiguration {
         pkgs = nixpkgs.legacyPackages.x86_64-linux;
-        modules = [ ./home/shared.nix ./home/hosts/laptop.nix ];
+        modules = [ ./home/shared.nix ./home/hosts/laptop/laptop.nix ];
       };
     };
   };
