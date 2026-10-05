@@ -5,4 +5,5 @@
 
 {
   # e.g. home.packages = [ pkgs.zoom-us pkgs.slack ... ];
+  targets.genericLinux.enable = true;
 }
