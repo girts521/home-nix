@@ -1,0 +1,37 @@
+#!/bin/bash
+
+obsidian_path="/home/girts/Documents/Obsidian-git"
+
+cd $obsidian_path || exit 1
+
+option=$(
+  fuzzel -d <<EOF
+New Quick note
+Create new note
+Fuzzyfind a note
+EOF
+)
+
+if [[ "$option" == "Create new note" ]]; then
+  parent=$(ls $obsidian_path | fuzzel -d)
+  file_name=$(fuzzel -d -p "Please enter a filename: ")
+  foot --app-id notes -e nvim "$obsidian_path/$parent/$file_name"
+fi
+
+if [[ "$option" == "New Quick note" ]]; then
+  file_name=$(fuzzel -d -p "Please enter a filename: ")
+  foot --app-id notes -e nvim "$obsidian_path/1. Index/$file_name"
+fi
+
+if [[ "$option" == "Fuzzyfind a note" ]]; then
+  temp_file=$(mktemp)
+  foot --app-id notes sh -c "fzf --preview 'bat --color=always {}' >$temp_file"
+  file=$(cat $temp_file)
+  rm $temp_file
+  if [[ -f "$file" ]]; then
+    foot --app-id notes -e nvim "$file"
+  else
+    notify-send "File does not exist"
+    exit 1
+  fi
+fi
