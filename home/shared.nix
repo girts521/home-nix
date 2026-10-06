@@ -13,6 +13,7 @@
     bluetui
     waybar
     easyeffects
+    pavucontrol
     wl-clipboard
     swaybg
     swayimg
