@@ -43,6 +43,11 @@
   executable = true;
   };
 
+  xdg.configFile."tmux" = {
+      source = ../config/tmux;
+      recursive = true;
+  };
+
   programs.home-manager.enable = true;
 
   home.username = "girts";
