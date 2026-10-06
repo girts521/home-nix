@@ -14,6 +14,11 @@
     waybar
     easyeffects
     wl-clipboard
+    swaybg
+    swayimg
+    libnotify
+    pywal16
+    pywalfox-native
   ];
 
   # Example of declarative dotfiles that follow the config everywhere:
