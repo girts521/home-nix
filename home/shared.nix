@@ -53,6 +53,16 @@
       recursive = true;
   };
 
+  xdg.configFile."ghostty" = {
+      source = ../config/ghostty;
+      recursive = true;
+  };
+
+  xdg.configFile."fuzzel" = {
+      source = ../config/fuzzel;
+      recursive = true;
+  };
+
   programs.home-manager.enable = true;
 
   home.username = "girts";
