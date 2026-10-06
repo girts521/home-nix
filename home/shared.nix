@@ -26,6 +26,8 @@
     google-fonts
   ];
 
+  nixpkgs.config.allowUnfree = true;
+
   # Example of declarative dotfiles that follow the config everywhere:
   # home.file.".config/git/config".source = ./dotfiles/gitconfig;
   # home.file.".local/bin/myscript" = {

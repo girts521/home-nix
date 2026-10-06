@@ -5,14 +5,12 @@
 
 {
   home.packages = with pkgs; [
-    lidarr-bin
-    python-syncedlyrics
+    lidarr
+    python313Packages.syncedlyrics
     sabnzbd
-    sddm-sugar-candy-git
     spotdl
-    vesktop-bin
-    xone-dkms
-  ]
+    vesktop
+  ];
   # e.g. home.packages = [ pkgs.ollama ... ];
   # e.g. GPU / machine-specific tooling goes here, not in shared.nix
 }
