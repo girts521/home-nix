@@ -48,6 +48,11 @@
   executable = true;
   };
 
+  home.file.".local/bin/theme_selector" = {
+  source = ../scripts/theme_selector;
+  executable = true;
+  };
+
   xdg.configFile."tmux" = {
       source = ../config/tmux;
       recursive = true;

@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# /home/girts/Pictures/background/wallhaven/
+
+# if [ -z "$1" ]; then
+#   echo "Usage: $0 /path/to/wallpaper/directory"
+#   exit 1
+# fi
+
+WALLPAPER_DIR="/home/girts/Pictures/background/wallhaven"
+
+selected_img=$(swayimg --gallery "${WALLPAPER_DIR}")
+
+if [ -z "${selected_img}" ]; then
+  echo "No image was selected"
+  exit 1
+fi
+
+wal -q -n -i "${selected_img}"
+pkill swaybg
+swaybg -i "${selected_img}" -m fill &
+ln -sf "${selected_img}" ~/.cache/current_wallpaper
+
+pkill waybar
+sleep 0.3
+waybar &
+disown
+
+pywalfox update
+
+notify-send "Theme Changed" "New theme applied from $(basename "${selected_img}")"
