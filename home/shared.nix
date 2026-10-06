@@ -20,6 +20,14 @@
     libnotify
     pywal16
     pywalfox-native
+    bemoji
+    buku-git
+    python-pywal
+    python-pywalfox-librewolf
+    python-pywalfox
+    slack-desktop-wayland
+    swaylock-effects-git
+    ttf-google-fonts-typewolf
   ];
 
   # Example of declarative dotfiles that follow the config everywhere:
