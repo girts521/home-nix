@@ -48,6 +48,11 @@
       recursive = true;
   };
 
+  xdg.configFile."nvim" = {
+      source = ../config/nvim;
+      recursive = true;
+  };
+
   programs.home-manager.enable = true;
 
   home.username = "girts";
