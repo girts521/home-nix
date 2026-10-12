@@ -4,5 +4,6 @@ quick-terminal-size = 40%,50%
 quick-terminal-autohide = false
 gtk-quick-terminal-layer = top
 background-opacity = 0.8
+confirm-close-surface = false
 
 keybind = global:alt+space=toggle_quick_terminal

@@ -5,8 +5,8 @@ set -e
 HOST_DIR="$HOME/infra/hosts"
 
 if [ $# -lt 2 ]; then
-    echo "Usage: rssh <group|host[,group|host...]> <command>"
-    exit 1
+  echo "Usage: rssh <group|host[,group|host...]> <command>"
+  exit 1
 fi
 
 target_spec="$1"
@@ -15,14 +15,14 @@ shift
 hosts=$(mktemp)
 trap 'rm -f "$hosts"' EXIT
 
-IFS=',' read -ra targets <<< "$target_spec"
+IFS=',' read -ra targets <<<"$target_spec"
 
 for target in "${targets[@]}"; do
-    if [ -f "$HOST_DIR/$target" ]; then
-        cat "$HOST_DIR/$target" >> "$hosts"
-    else
-        printf "%s\n" "$target" >> "$hosts"
-    fi
+  if [ -f "$HOST_DIR/$target" ]; then
+    cat "$HOST_DIR/$target" >>"$hosts"
+  else
+    printf "%s\n" "$target" >>"$hosts"
+  fi
 done
 
 # Remove duplicate and empty entries
@@ -30,8 +30,8 @@ sort -u "$hosts" -o "$hosts"
 sed -i '/^[[:space:]]*$/d' "$hosts"
 
 parallel-ssh \
-    -i \
-    -O ConnectTimeout=5 \
-    -t 5 \
-    -h "$hosts" \
-    "$@"
+  -i \
+  -O ConnectTimeout=5 \
+  -t 5 \
+  -h "$hosts" \
+  "$@"
