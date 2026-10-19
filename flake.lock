@@ -40,7 +40,25 @@
     "root": {
       "inputs": {
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "sqlmux": "sqlmux"
+      }
+    },
+    "sqlmux": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1792050998,
+        "narHash": "sha256-ztnOQ1yJMZ0DfvWzI5zaUImGbKecbo30n7mJEoNDtxQ=",
+        "owner": "kackerx",
+        "repo": "sqlmux",
+        "rev": "9e8438ef772bff5b3ca1dcb1033a8dd1529f83d0",
+        "type": "github"
+      },
+      "original": {
+        "owner": "kackerx",
+        "ref": "v0.5.0",
+        "repo": "sqlmux",
+        "type": "github"
       }
     }
   },

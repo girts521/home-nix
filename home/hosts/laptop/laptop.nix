@@ -27,4 +27,9 @@
   executable = true;
   };
 
+  home.file.".local/bin/atticdb" = {
+  source = ./scripts/atticdb.sh;
+  executable = true;
+  };
+
 }

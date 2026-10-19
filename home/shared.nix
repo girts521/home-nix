@@ -1,5 +1,16 @@
-{ config, pkgs, ... }:
+{ config, pkgs, inputs, lib, ... }:
 
+let
+  sqlmux = pkgs.buildGoModule {
+    pname = "sqlmux";
+    version = "0.5.0";
+    src = inputs.sqlmux;
+    vendorHash = "sha256-pOsM3Azu7rBRBSQUbmlNtYRAGpB+GkwObioKrfm54aw=";
+    subPackages = [ "cmd/sqlmux" ];
+    env.CGO_ENABLED = 0;
+    ldflags = [ "-s" "-w" ];
+  };
+in
 {
   # Shared across ALL hosts — this is the "single source of truth" part.
   # As you migrate tools from pacman/AUR to Nix, they land here so both
@@ -24,6 +35,7 @@
     buku
     swaylock-effects
     google-fonts
+    sqlmux
   ];
 
   nixpkgs.config.allowUnfree = true;
