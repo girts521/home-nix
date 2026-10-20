@@ -2,6 +2,7 @@ import Quickshell
 import Quickshell.Io
 import QtQuick
 import QtQml.Models
+import "components"
 
 Scope {
     id: root
@@ -295,7 +296,7 @@ Scope {
                         MouseArea {
                             anchors.fill: parent
                             cursorShape: Qt.PointingHandCursor
-                            onClicked: Quickshell.execDetached(["gnome-calendar"])
+                            onClicked: calendarPopup.toggle()
                         }
                     }
                 }
@@ -336,6 +337,19 @@ Scope {
                         }
                     }
                 }
+            }
+
+            // A separate popup on each monitor, centered under that bar's date.
+            CalendarPopup {
+                id: calendarPopup
+                anchor.window: bar
+                anchor.rect.x: Math.round((bar.width - implicitWidth) / 2)
+                anchor.rect.y: bar.height + 6
+                backgroundColor: root.bg
+                foregroundColor: root.fg
+                accentColor: root.purple
+                secondaryColor: root.blue
+                currentDateTime: clock.date
             }
         }
     }

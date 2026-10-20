@@ -1,70 +1,108 @@
-# Home Manager: Niri Quickshell bar
+# Quickshell / Niri calendar (Home Manager)
 
-This bundle copies the **working Niri bar** from `quickshell-niri-waybar-fixed/shell.qml`
-into an example Home Manager host-module layout. It does not change Niri or Waybar.
+This bundle extends the existing shared `bar` Quickshell configuration. It was
+prepared from the last working 3-monitor Niri bar discussed in chat (animated
+workspace indicators, CPU/RAM, pywal colors).
 
-## Add to your home-nix flake repo
+## Files
 
-From the directory containing `flake.nix`:
+- `config/quickshell/bar/shell.qml` — current bar, with the date click changed
+  from `gnome-calendar` to `calendarPopup.toggle()`; imports `components` and
+  instantiates one `CalendarPopup` per output.
+- `config/quickshell/bar/components/CalendarPopup.qml` — month view, mouse
+  wheel / arrow navigation, Today shortcut, selected-day agenda, subtle fades,
+  live pywal colors.
+- `config/quickshell/calendar/events.py` — independent ICS reader/5-minute
+  offline cache. It expands recurring events with `recurring-ical-events`.
+- `home/modules/quickshell.nix` — installs Quickshell and `qs-calendar-events`
+  through Nix; keeps the existing graphical-session systemd user service.
 
-```sh
+**Important:** extracting the ZIP overwrites the existing `shell.qml` and
+`home/modules/quickshell.nix`. If you've customized those files since the
+previous version, compare or back them up first. All of the other files are
+new. The secret feed URL is NOT part of this package.
+
+## 1. Add the files to home-nix
+
+```bash
 cd ~/dev/home-nix
-unzip ~/Downloads/home-nix-quickshell-bar.zip -d .
-```
-
-Add the module to the *laptop* Home Manager configuration's existing `imports` list:
-
-```nix
-imports = [
-  # existing imports...
-  ./quickshell-bar.nix
-];
-```
-
-The import path is relative to the Nix file holding the `imports` list. The
-example assumes it lives in `hosts/laptop/`. If that is not the case, adjust
-accordingly.
-
-Flakes only see tracked or staged repository files, so:
-
-```sh
-git add hosts/laptop/quickshell-bar.nix hosts/laptop/quickshell/bar/shell.qml
+unzip ~/Downloads/quickshell-calendar-home-nix.zip -d .
+git add config/quickshell home/modules/quickshell.nix
 home-manager switch --flake .#laptop
 ```
 
-Test it (stop the existing demo with Ctrl+C before running this):
+Your `flake.nix` already imports `./home/modules/quickshell.nix` for the laptop;
+no additional flake changes are needed.
 
-```sh
-qs -c bar
+## 2. Create a PRIVATE local calendar feed file
+
+In Google Calendar (web): Settings > choose calendar > Integrate calendar >
+**Secret address in iCal format**. Copy this *private subscription URL*, not a
+one-time ICS export. Some organization calendars have this disabled by policy.
+
+```bash
+install -d -m 700 ~/.config/quickshell-calendar
+umask 077
+nano ~/.config/quickshell-calendar/feeds
+chmod 600 ~/.config/quickshell-calendar/feeds
 ```
 
-## Autostart after testing
+Put ONE HTTPS iCal URL on each line. You may list more than one calendar. The
+private feed URLs must never be committed to Git, put in Nix config, or shared.
+The helper refuses to read the URL file if it is group/world-readable.
 
-In the **existing, Home Manager-managed** Niri config.kdl, add:
+## 3. Test backend independently
 
-```kdl
-spawn-at-startup "qs" "-c" "bar"
+```bash
+qs-calendar-events --start "$(date +%F)" --end "$(date -d '+35 days' +%F)" | jq
 ```
 
-Remove or comment out the existing `spawn-at-startup "waybar"` **only once**
-you intend to switch permanently. Do not enable `programs.quickshell.systemd`
-if using Niri autostart, or Quickshell may be started twice.
+Expected output is JSON with `status` and `events`. The `day` field contains
+local dates. The helper caches each full ICS feed for **300 seconds** under
+`~/.cache/quickshell-calendar/` with restrictive permissions; if the network
+is unavailable, it uses the previously cached feed and reports `stale`. Note
+that Google may refresh its ICS feed at its own cadence, independent of the
+five-minute local cache.
 
-The Quickshell bar reserves 36px of screen space and starts at the top of every
-monitor; both settings are in `shell.qml`. Its colors continue to load from
-`~/.cache/wal/colors.json`.
+## 4. Launch / refresh bar
 
-## Working on QML
+If using Home Manager's service:
 
-Home Manager installs QML via symlinks to immutable files in `/nix/store`.
-Edit the file **in the repo**, not under `~/.config/quickshell/bar`, and re-run
-`home-manager switch --flake .#laptop` to deploy the change.
-
-To iterate with faster hot reload, stop the deployed bar, and run directly from
-the mutable project directory:
-
-```sh
-qs -p ~/dev/home-nix/hosts/laptop/quickshell/bar
+```bash
+systemctl --user restart quickshell.service
+journalctl --user -u quickshell.service -n 40 --no-pager
 ```
 
-Afterwards switch back to `qs -c bar`. The given module only affects `laptop`.
+Click the date in the top bar. The popup works on any of your three monitors.
+Arrow buttons and **scrolling over the month grid** change months; click any
+day to see its agenda. **Today** returns to the current date. Clicking outside
+closes the popup.
+
+## Development
+
+You can edit the source files in your repo, then test hot-reload directly:
+
+```bash
+qs -p ~/dev/home-nix/config/quickshell/bar
+```
+
+Stop the systemd-managed bar first if you do this to avoid duplicate bars:
+
+```bash
+systemctl --user stop quickshell.service
+```
+
+Then use `home-manager switch --flake .#laptop` and start the service again
+when ready.
+
+## Notes
+
+- No GNOME services, OAuth credentials, Google Cloud project, or extra daemon.
+- Read-only; creating/editing events still requires Google Calendar or another
+  calendar client.
+- Calendar feeds can be disabled by Google Workspace administrators.
+- The helper binary is installed in the Home Manager profile. The QML component
+  calls `~/.nix-profile/bin/qs-calendar-events` to work even if the systemd
+  environment's PATH is minimal.
+- There is one lightweight `PopupWindow` per screen, but **no calendar process
+  is running while the popup is closed**.
