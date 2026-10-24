@@ -369,6 +369,7 @@ Scope {
                 accentColor: root.purple
                 secondaryColor: root.blue
                 currentDateTime: clock.date
+                quickControls: quickControls
             }
 
             QuickControls {
@@ -378,6 +379,7 @@ Scope {
                 foregroundColor: root.fg
                 accentColor: root.purple
                 secondaryColor: root.blue
+                calendarPopup: calendarPopup
             }
         }
     }

@@ -17,10 +17,21 @@ PopupWindow {
     property bool wifiEnabled: false
     property string wifiName: "Checking network…"
     property var wifiList: []
+    property var wifiResults: []
+    property bool wifiScanning: false
+    property bool wifiScanPending: false
+    property string wifiScanMessage: ""
+    property string wifiScanError: ""
     property var savedNetworks: []
     property bool bluetoothEnabled: false
     property string bluetoothName: "No device connected"
     property var bluetoothList: []
+    property var bluetoothFound: []
+    property bool bluetoothScanning: false
+    property bool bluetoothScanPending: false
+    property string bluetoothScanMessage: ""
+    property string bluetoothScanError: ""
+    property var calendarPopup: null
     property string audioTab: "output"
     property bool networkDetails: false
     property bool bluetoothDetails: false
@@ -35,7 +46,7 @@ PopupWindow {
     property bool inputMuted: false
 
     implicitWidth: 370
-    implicitHeight: 396 + ((networkDetails || bluetoothDetails) ? 80 : 0) + (deviceMenuTab !== "" ? 50 : 0)
+    implicitHeight: 435 + ((networkDetails || bluetoothDetails) ? 92 : 0) + (deviceMenuTab !== "" ? 78 : 0)
     visible: false
     color: "transparent"
     grabFocus: true
@@ -55,19 +66,134 @@ PopupWindow {
     }
 
     function toggle() {
-        visible = !visible;
         if (visible) {
-            refresh();
-            panel.opacity = 0;
-            opening.restart();
+            opening.stop();
+            closing.restart();
+            return;
         }
+        closing.stop();
+        if (calendarPopup) calendarPopup.hide();
+        refresh();
+        panel.opacity = 0;
+        panel.offsetY = -5;
+        visible = true;
+        opening.restart();
+    }
+
+    function hide() {
+        opening.stop();
+        closing.stop();
+        panel.opacity = 0;
+        visible = false;
+    }
+
+    function startWifiScan() {
+        wifiScanMessage = "";
+        wifiScanning = true;
+        wifiScanTimeout.restart();
+        if (!wifiEnabled) {
+            wifiScanPending = true;
+            wifiCommand.exec(["nmcli", "radio", "wifi", "on"]);
+            wifiScanAfterEnable.restart();
+            return;
+        }
+        wifiScanPending = false;
+        wifiResults = [];
+        wifiScanProcess.running = true;
+    }
+
+    function startBluetoothScan() {
+        bluetoothScanMessage = "";
+        bluetoothScanning = true;
+        bluetoothStopTimer.restart();
+        if (!bluetoothEnabled) {
+            bluetoothScanPending = true;
+            bluetoothCommand.exec(["bluetoothctl", "power", "on"]);
+            bluetoothScanAfterEnable.restart();
+            return;
+        }
+        bluetoothScanPending = false;
+        bluetoothFound = [];
+        bluetoothList = [];
+        bluetoothScanProcess.running = true;
+    }
+
+    function finishWifiScan() {
+        if (wifiScanning && wifiResults.length === 0 && wifiScanMessage.length === 0)
+            popup.wifiScanMessage = popup.wifiScanError || (wifiEnabled ? "No nearby networks found" : "Wi-Fi could not be enabled");
+        wifiScanning = false;
+        wifiScanPending = false;
+        wifiScanTimeout.stop();
+    }
+
+    function cancelWifiScan() {
+        wifiScanning = false;
+        wifiScanPending = false;
+        wifiScanTimeout.stop();
+        wifiScanAfterEnable.stop();
+        wifiScanProcess.running = false;
+    }
+
+    function finishBluetoothScan() {
+        if (!bluetoothScanning && !bluetoothScanPending) return;
+        if (bluetoothFound.length === 0 && bluetoothScanMessage.length === 0)
+            bluetoothScanMessage = bluetoothEnabled ? "No nearby devices found" : "Bluetooth could not be enabled";
+        bluetoothScanning = false;
+        bluetoothScanPending = false;
+        bluetoothStopTimer.stop();
+        if (bluetoothScanProcess.running) {
+            bluetoothScanProcess.write("scan off\n");
+            bluetoothProcessCleanup.restart();
+        }
+        bluetoothDevices.running = true;
+    }
+
+    function parseWifiLine(line) {
+        const fields = [];
+        let field = "";
+        let escaped = false;
+        for (const ch of line) {
+            if (escaped) { field += ch; escaped = false; }
+            else if (ch === "\\") escaped = true;
+            else if (ch === ":") { fields.push(field); field = ""; }
+            else field += ch;
+        }
+        fields.push(field);
+        if (fields.length < 4 || !fields[1]) return null;
+        return { active: fields[0] === "*", ssid: fields[1], signal: Number(fields[2]) || 0, security: fields[3] || "Open" };
+    }
+
+    function handleBluetoothLine(line) {
+        let match = line.match(/Device\s+([0-9A-F:]{17})\s+(.+)/i);
+        if (!match) match = line.match(/\[NEW\]\s+Device\s+([0-9A-F:]{17})\s+(.+)/i);
+        if (!match) match = line.match(/\[CHG\]\s+Device\s+([0-9A-F:]{17})\s+Name:\s+(.+)/i);
+        if (!match) match = line.match(/\[CHG\]\s+Device\s+([0-9A-F:]{17})\s+Alias:\s+(.+)/i);
+        if (!match) return;
+        const device = { mac: match[1], name: match[2].trim(), connected: false, active: true };
+        const index = bluetoothFound.findIndex(item => item.mac === device.mac);
+        const updated = bluetoothFound.slice();
+        if (index >= 0) updated[index] = device;
+        else updated.unshift(device);
+        bluetoothFound = updated;
+        bluetoothList = updated.concat(bluetoothList.filter(item => !updated.some(found => found.mac === item.mac)));
+    }
+
+    function setAudioVolume(value) {
+        const bounded = Math.max(0, Math.min(1.5, Number(value)));
+        const id = popup.audioTab === "output" ? popup.outputId : popup.inputId;
+        if (popup.audioTab === "output") popup.volume = bounded;
+        else popup.inputVolume = bounded;
+        audioCommand.exec(["wpctl", "set-volume", id, bounded.toFixed(2)]);
     }
 
     Process {
         id: wifiState
         command: ["nmcli", "radio", "wifi"]
         stdout: StdioCollector {
-            onStreamFinished: popup.wifiEnabled = this.text.trim() === "enabled"
+            onStreamFinished: {
+                popup.wifiEnabled = this.text.trim() === "enabled";
+                if (popup.wifiEnabled && popup.wifiScanPending) popup.startWifiScan();
+            }
         }
     }
 
@@ -107,6 +233,7 @@ PopupWindow {
             onStreamFinished: {
                 const match = this.text.match(/^\s*Powered:\s*(yes|no)/m);
                 popup.bluetoothEnabled = match ? match[1] === "yes" : false;
+                if (popup.bluetoothEnabled && popup.bluetoothScanPending) popup.startBluetoothScan();
             }
         }
     }
@@ -120,12 +247,40 @@ PopupWindow {
                     const parts = line.split("|");
                     return { mac: parts[0], name: parts[1] || parts[0], connected: parts[2] === "yes" };
                 });
-                popup.bluetoothList = list.map(device => ({ mac: device.mac, name: device.name, connected: device.connected, active: false }));
+                const paired = list.map(device => ({ mac: device.mac, name: device.name, connected: device.connected, active: false }));
+                popup.bluetoothList = paired.concat(popup.bluetoothFound.filter(found => !paired.some(device => device.mac === found.mac)));
                 const connected = list.find(device => device.connected);
                 popup.bluetoothName = connected ? connected.name : "No device connected";
                 if (!popup.bluetoothEnabled) popup.bluetoothName = "Turned off";
             }
         }
+    }
+
+    Process {
+        id: wifiScanProcess
+        command: ["nmcli", "-t", "--escape", "yes", "-f", "IN-USE,SSID,SIGNAL,SECURITY", "device", "wifi", "list", "--rescan", "yes"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = this.text.split("\n").filter(line => line.length > 0);
+                popup.wifiResults = lines.map(line => popup.parseWifiLine(line)).filter(item => item !== null);
+                popup.finishWifiScan();
+            }
+        }
+        onExited: (exitCode, exitStatus) => {
+            if (exitCode !== 0) popup.wifiScanMessage = "Wi-Fi scan failed (" + exitCode + ")";
+            popup.finishWifiScan();
+        }
+    }
+
+    Process {
+        id: bluetoothScanProcess
+        command: ["bluetoothctl"]
+        stdinEnabled: true
+        onStarted: write("scan on\n")
+        stdout: SplitParser {
+            onRead: data => popup.handleBluetoothLine(data)
+        }
+        onRunningChanged: if (!running && popup.bluetoothScanning) popup.finishBluetoothScan()
     }
 
     Process {
@@ -184,9 +339,16 @@ PopupWindow {
     Process { id: bluetoothCommand }
     Process { id: audioCommand }
 
+
     Timer { id: poll; interval: 5000; repeat: true; running: popup.visible; onTriggered: popup.refresh() }
     Timer { id: refreshSoon; interval: 700; repeat: false; onTriggered: popup.refresh() }
-    Timer { id: opening; interval: 160; repeat: false; onTriggered: { panel.opacity = 1; panel.y = 0; } }
+    Timer { id: wifiScanAfterEnable; interval: 1200; repeat: false; onTriggered: wifiState.running = true }
+    Timer { id: wifiScanTimeout; interval: 20000; repeat: false; onTriggered: finishWifiScan() }
+    Timer { id: bluetoothScanAfterEnable; interval: 1200; repeat: false; onTriggered: bluetoothState.running = true }
+    Timer { id: bluetoothStopTimer; interval: 12000; repeat: false; onTriggered: finishBluetoothScan() }
+    Timer { id: bluetoothProcessCleanup; interval: 350; repeat: false; onTriggered: bluetoothScanProcess.running = false }
+    SequentialAnimation { id: opening; NumberAnimation { target: panel; property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }; NumberAnimation { target: panel; property: "offsetY"; from: -5; to: 0; duration: 180; easing.type: Easing.OutCubic } }
+    SequentialAnimation { id: closing; NumberAnimation { target: panel; property: "opacity"; to: 0; duration: 110; easing.type: Easing.InCubic }; ScriptAction { script: popup.visible = false } }
 
     Rectangle {
         id: panel
@@ -196,9 +358,10 @@ PopupWindow {
         border.width: 1
         border.color: Qt.rgba(popup.foregroundColor.r, popup.foregroundColor.g, popup.foregroundColor.b, 0.14)
         opacity: 0
-        y: -5
-        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
-        Behavior on y { NumberAnimation { duration: 180; easing.type: Easing.OutCubic } }
+        property real offsetY: -5
+        transform: Translate { y: panel.offsetY }
+        Behavior on opacity { NumberAnimation { duration: 130; easing.type: Easing.OutCubic } }
+        Behavior on y { NumberAnimation { duration: 160; easing.type: Easing.OutCubic } }
 
         ColumnLayout {
             anchors.fill: parent
@@ -217,7 +380,7 @@ PopupWindow {
                     width: 29; height: 29; radius: 9
                     color: closeMouse.containsMouse ? popup.secondaryColor : "transparent"
                     Text { anchors.centerIn: parent; text: "×"; color: popup.foregroundColor; font.pixelSize: 19 }
-                    MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: popup.visible = false }
+                    MouseArea { id: closeMouse; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { opening.stop(); closing.restart(); } }
                 }
             }
 
@@ -229,14 +392,42 @@ PopupWindow {
                     title: "Wi-Fi"; detail: popup.wifiName; glyph: "◉"
                     enabledState: popup.wifiEnabled; backgroundColor: popup.backgroundColor
                     foregroundColor: popup.foregroundColor; accentColor: popup.accentColor
-                    onClicked: { wifiCommand.exec(["nmcli", "radio", "wifi", popup.wifiEnabled ? "off" : "on"]); refreshSoon.restart(); }
+                    onClicked: {
+                        if (popup.wifiEnabled) popup.cancelWifiScan();
+                        const turnOn = !popup.wifiEnabled;
+                        popup.wifiScanMessage = "";
+                        wifiCommand.exec(["nmcli", "radio", "wifi", turnOn ? "on" : "off"]);
+                        if (turnOn && popup.networkDetails) {
+                            popup.wifiScanPending = true;
+                            popup.wifiScanning = true;
+                            popup.wifiScanTimeout.restart();
+                            wifiScanAfterEnable.restart();
+                        }
+                        refreshSoon.restart();
+                    }
                 }
                 ControlTile {
                     Layout.fillWidth: true
                     title: "Bluetooth"; detail: popup.bluetoothName; glyph: "ᛒ"
                     enabledState: popup.bluetoothEnabled; backgroundColor: popup.backgroundColor
                     foregroundColor: popup.foregroundColor; accentColor: popup.accentColor
-                    onClicked: { bluetoothCommand.exec(["bluetoothctl", "power", popup.bluetoothEnabled ? "off" : "on"]); refreshSoon.restart(); }
+                    onClicked: {
+                        if (popup.bluetoothEnabled) {
+                            popup.finishBluetoothScan();
+                        } else if (popup.bluetoothScanning || popup.bluetoothScanPending) {
+                            popup.finishBluetoothScan();
+                        }
+                        const turnOn = !popup.bluetoothEnabled;
+                        popup.bluetoothScanMessage = "";
+                        bluetoothCommand.exec(["bluetoothctl", "power", turnOn ? "on" : "off"]);
+                        if (turnOn && popup.bluetoothDetails) {
+                            popup.bluetoothScanPending = true;
+                            popup.bluetoothScanning = true;
+                            bluetoothScanAfterEnable.restart();
+                            popup.bluetoothStopTimer.restart();
+                        }
+                        refreshSoon.restart();
+                    }
                 }
             }
 
@@ -246,14 +437,22 @@ PopupWindow {
                 Rectangle {
                     Layout.fillWidth: true; height: 27; radius: 8
                     color: networkExpand.containsMouse ? popup.secondaryColor : "transparent"
-                    Text { anchors.centerIn: parent; text: popup.networkDetails ? "Wi-Fi networks  ⌄" : "Wi-Fi networks  ›"; color: popup.foregroundColor; font.pixelSize: 10; font.bold: true }
-                    MouseArea { id: networkExpand; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: popup.networkDetails = !popup.networkDetails }
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 5
+                        Text { visible: popup.wifiScanning; text: "◌"; color: popup.accentColor; font.pixelSize: 12; RotationAnimation on rotation { from: 0; to: 360; duration: 800; loops: Animation.Infinite; running: popup.wifiScanning } }
+                        Text { text: popup.wifiScanning ? "Scanning Wi-Fi…" : (popup.networkDetails ? "Wi-Fi networks  ⌄" : "Wi-Fi networks  ›"); color: popup.foregroundColor; font.pixelSize: 10; font.bold: true }
+                    }
+                    MouseArea { id: networkExpand; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { popup.bluetoothDetails = false; popup.networkDetails = !popup.networkDetails; if (!popup.networkDetails) popup.cancelWifiScan(); else popup.startWifiScan(); } }
                 }
                 Rectangle {
                     Layout.fillWidth: true; height: 27; radius: 8
                     color: bluetoothExpand.containsMouse ? popup.secondaryColor : "transparent"
-                    Text { anchors.centerIn: parent; text: popup.bluetoothDetails ? "Bluetooth devices  ⌄" : "Bluetooth devices  ›"; color: popup.foregroundColor; font.pixelSize: 10; font.bold: true }
-                    MouseArea { id: bluetoothExpand; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: popup.bluetoothDetails = !popup.bluetoothDetails }
+                    RowLayout {
+                        anchors.centerIn: parent; spacing: 5
+                        Text { visible: popup.bluetoothScanning; text: "◌"; color: popup.accentColor; font.pixelSize: 12; RotationAnimation on rotation { from: 0; to: 360; duration: 800; loops: Animation.Infinite; running: popup.bluetoothScanning } }
+                        Text { text: popup.bluetoothScanning ? "Scanning Bluetooth…" : (popup.bluetoothDetails ? "Bluetooth devices  ⌄" : "Bluetooth devices  ›"); color: popup.foregroundColor; font.pixelSize: 10; font.bold: true }
+                    }
+                    MouseArea { id: bluetoothExpand; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: { popup.networkDetails = false; popup.bluetoothDetails = !popup.bluetoothDetails; if (!popup.bluetoothDetails) popup.finishBluetoothScan(); else popup.startBluetoothScan(); } }
                 }
             }
 
@@ -279,7 +478,7 @@ PopupWindow {
                                     width: modelData.key === "output" ? 48 : 39; height: 24; radius: 7
                                     color: popup.audioTab === modelData.key ? popup.secondaryColor : "transparent"
                                     Text { anchors.centerIn: parent; text: modelData.label; color: popup.foregroundColor; font.pixelSize: 9 }
-                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: popup.audioTab = modelData.key }
+                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: { popup.audioTab = modelData.key; popup.deviceMenuTab = ""; if (modelData.key === "output") outputVolumeState.running = true; else inputVolumeState.running = true; } }
                                 }
                             }
                         }
@@ -291,10 +490,10 @@ PopupWindow {
                             id: audioSlider
                             Layout.fillWidth: true; from: 0; to: 1.5
                             value: popup.audioTab === "output" ? popup.volume : popup.inputVolume
-                            onMoved: {
-                                if (popup.audioTab === "output") { popup.volume = value; audioCommand.exec(["wpctl", "set-volume", popup.outputId, value.toFixed(2)]); }
-                                else { popup.inputVolume = value; audioCommand.exec(["wpctl", "set-volume", popup.inputId, value.toFixed(2)]); }
-                            }
+                            stepSize: 0.01
+                            live: true
+                            onMoved: popup.setAudioVolume(value)
+                            onValueChanged: if (pressed) popup.setAudioVolume(value)
                         }
                         Text { text: Math.round((popup.audioTab === "output" ? popup.volume : popup.inputVolume) * 100) + "%"; color: popup.foregroundColor; font.pixelSize: 10; font.bold: true }
                         Rectangle {
@@ -322,7 +521,7 @@ PopupWindow {
                         MouseArea { id: deviceMenu; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: popup.deviceMenuTab = popup.deviceMenuTab === popup.audioTab ? "" : popup.audioTab }
                     }
                     Repeater {
-                        model: popup.deviceMenuTab === popup.audioTab ? (popup.audioTab === "output" ? popup.audioOutputs : popup.audioInputs) : []
+                        model: popup.deviceMenuTab === popup.audioTab ? (popup.audioTab === "output" ? popup.audioOutputs : popup.audioInputs).slice(0, 3) : []
                         delegate: Rectangle {
                             required property var modelData
                             Layout.fillWidth: true; height: 23; radius: 6
@@ -358,7 +557,7 @@ PopupWindow {
                         color: popup.accentColor; font.pixelSize: 8; font.bold: true; font.letterSpacing: 1
                     }
                     Repeater {
-                        model: popup.networkDetails ? popup.savedNetworks.slice(0, 3).map(name => ({ ssid: name, active: name === popup.wifiName })) : (popup.bluetoothDetails ? popup.bluetoothList.slice(0, 3) : [])
+                        model: popup.networkDetails ? popup.wifiResults.slice(0, 3) : (popup.bluetoothDetails ? popup.bluetoothList.slice(0, 3) : [])
                         delegate: Rectangle {
                             required property var modelData
                             Layout.fillWidth: true; height: 19; radius: 5
@@ -366,7 +565,7 @@ PopupWindow {
                             Text {
                                 anchors.left: parent.left; anchors.leftMargin: 6; anchors.right: parent.right; anchors.verticalCenter: parent.verticalCenter
                                 text: popup.networkDetails
-                                    ? ((modelData.active ? "✓  " : "◉  ") + modelData.ssid)
+                                    ? ((modelData.active ? "✓  " : "◉  ") + modelData.ssid + (modelData.signal ? " · " + modelData.signal + "%" : ""))
                                     : ((modelData.connected ? "✓  " : "ᛒ  ") + modelData.name + (modelData.connected ? " · Connected" : ""))
                                 color: popup.foregroundColor; font.pixelSize: 9; elide: Text.ElideRight
                             }
@@ -375,7 +574,10 @@ PopupWindow {
                                 onClicked: {
                                     if (popup.networkDetails) {
                                         if (modelData.active) return;
-                                        wifiCommand.exec(["nmcli", "connection", "up", "id", modelData.ssid]);
+                                        if (modelData.saved || popup.savedNetworks.indexOf(modelData.ssid) >= 0)
+                                            wifiCommand.exec(["nmcli", "connection", "up", "id", modelData.ssid]);
+                                        else
+                                            wifiCommand.exec(["nmcli", "device", "wifi", "connect", modelData.ssid]);
                                     } else {
                                         bluetoothCommand.exec(["bluetoothctl", modelData.connected ? "disconnect" : "connect", modelData.mac]);
                                     }
@@ -392,8 +594,8 @@ PopupWindow {
                     }
                     Text {
                         Layout.fillWidth: true
-                        visible: (popup.networkDetails && popup.savedNetworks.length === 0) || (popup.bluetoothDetails && popup.bluetoothList.length === 0)
-                        text: popup.networkDetails ? "No saved networks found" : "No paired devices found"
+                        visible: popup.networkDetails ? (!popup.wifiScanning && popup.wifiResults.length === 0 && popup.savedNetworks.length === 0) : (!popup.bluetoothScanning && popup.bluetoothList.length === 0)
+                        text: popup.networkDetails ? (popup.wifiScanMessage || (popup.wifiScanning ? "Searching nearby networks…" : "No networks found")) : (popup.bluetoothScanMessage || (popup.bluetoothScanning ? "Searching for nearby devices…" : "No paired or nearby devices"))
                         color: Qt.rgba(popup.foregroundColor.r, popup.foregroundColor.g, popup.foregroundColor.b, 0.52); font.pixelSize: 9
                     }
                 }

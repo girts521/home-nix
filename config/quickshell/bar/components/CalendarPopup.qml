@@ -20,6 +20,7 @@ PopupWindow {
     property date currentDateTime: new Date()
     readonly property string todayKey: dayKey(currentDateTime)
     property double lastScrollMs: 0
+    property var quickControls: null
     property var events: []
     property string status: "unconfigured"
     property string statusMessage: ""
@@ -87,17 +88,28 @@ PopupWindow {
 
     function toggle() {
         if (visible) {
-            visible = false;
+            opening.stop();
+            closing.restart();
         } else {
+            closing.stop();
+            if (quickControls) quickControls.hide();
             const today = new Date();
             selectedDate = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 12);
             viewYear = today.getFullYear();
             viewMonth = today.getMonth();
+            panel.opacity = 0;
+            panel.offsetY = -5;
             visible = true;
             refreshEvents();
-            panel.opacity = 0;
             opening.restart();
         }
+    }
+
+    function hide() {
+        opening.stop();
+        closing.stop();
+        panel.opacity = 0;
+        visible = false;
     }
 
     function refreshEvents() {
@@ -151,6 +163,26 @@ PopupWindow {
             duration: 180
             easing.type: Easing.OutCubic
         }
+        NumberAnimation {
+            target: panel
+            property: "offsetY"
+            from: -5
+            to: 0
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+    }
+
+    SequentialAnimation {
+        id: closing
+        NumberAnimation {
+            target: panel
+            property: "opacity"
+            to: 0
+            duration: 110
+            easing.type: Easing.InCubic
+        }
+        ScriptAction { script: popup.visible = false }
     }
 
     SequentialAnimation {
@@ -172,6 +204,10 @@ PopupWindow {
         color: Qt.rgba(popup.backgroundColor.r, popup.backgroundColor.g, popup.backgroundColor.b, 0.97)
         border.width: 1
         border.color: Qt.rgba(popup.foregroundColor.r, popup.foregroundColor.g, popup.foregroundColor.b, 0.13)
+        opacity: 0
+        property real offsetY: -5
+        transform: Translate { y: panel.offsetY }
+        Behavior on opacity { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
 
         ColumnLayout {
             anchors.fill: parent
