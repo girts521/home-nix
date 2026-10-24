@@ -336,6 +336,25 @@ Scope {
                             font.pixelSize: 15
                         }
                     }
+                    Rectangle {
+                        width: 32
+                        height: 29
+                        radius: 6
+                        color: controlsMouse.containsMouse ? root.purple : root.blue
+                        Text {
+                            anchors.centerIn: parent
+                            text: "☷"
+                            color: root.fg
+                            font.pixelSize: 17
+                        }
+                        MouseArea {
+                            id: controlsMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: quickControls.toggle()
+                        }
+                    }
                 }
             }
 
@@ -350,6 +369,15 @@ Scope {
                 accentColor: root.purple
                 secondaryColor: root.blue
                 currentDateTime: clock.date
+            }
+
+            QuickControls {
+                id: quickControls
+                barWindow: bar
+                backgroundColor: root.bg
+                foregroundColor: root.fg
+                accentColor: root.purple
+                secondaryColor: root.blue
             }
         }
     }

@@ -16,9 +16,8 @@
 
   outputs = { nixpkgs, home-manager, ... }@inputs:
   let
-    # pkgs with the nixGL overlay so pkgs.nixgl.* wrappers exist (masterpc NVIDIA fix).
-    # Overlay only ADDS the nixgl wrappers; nothing on the laptop references them,
-    # so the laptop's build is unchanged.
+    # nixGL supplies the host NVIDIA EGL/OpenGL libraries to Nix-built apps.
+    # The overlay is only used by the Master PC's service override below.
     pkgs = import nixpkgs {
       system = "x86_64-linux";
       config.allowUnfree = true;

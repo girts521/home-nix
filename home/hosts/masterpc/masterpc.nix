@@ -14,8 +14,8 @@
   # e.g. home.packages = [ pkgs.ollama ... ];
   # e.g. GPU / machine-specific tooling goes here, not in shared.nix
 
-  # Nix-built quickshell can't see the host NVIDIA EGL driver -> wrap it.
-  # nixGL auto-detects the driver version at runtime.
+  # Nix-built Quickshell needs the host NVIDIA EGL/OpenGL stack on this machine.
+  # nixGL auto-detects the installed driver; keep this override host-specific.
   systemd.user.services.quickshell.Service.ExecStart = lib.mkForce
     "${pkgs.nixgl.auto.nixGLNvidia}/bin/nixGLNvidia ${pkgs.quickshell}/bin/quickshell --config bar";
 }
