@@ -347,8 +347,38 @@ PopupWindow {
     Timer { id: bluetoothScanAfterEnable; interval: 1200; repeat: false; onTriggered: bluetoothState.running = true }
     Timer { id: bluetoothStopTimer; interval: 12000; repeat: false; onTriggered: finishBluetoothScan() }
     Timer { id: bluetoothProcessCleanup; interval: 350; repeat: false; onTriggered: bluetoothScanProcess.running = false }
-    SequentialAnimation { id: opening; NumberAnimation { target: panel; property: "opacity"; from: 0; to: 1; duration: 160; easing.type: Easing.OutCubic }; NumberAnimation { target: panel; property: "offsetY"; from: -5; to: 0; duration: 180; easing.type: Easing.OutCubic } }
-    SequentialAnimation { id: closing; NumberAnimation { target: panel; property: "opacity"; to: 0; duration: 110; easing.type: Easing.InCubic }; ScriptAction { script: popup.visible = false } }
+    SequentialAnimation {
+        id: opening
+        NumberAnimation {
+            target: panel
+            property: "opacity"
+            from: 0
+            to: 1
+            duration: 160
+            easing.type: Easing.OutCubic
+        }
+        NumberAnimation {
+            target: panel
+            property: "offsetY"
+            from: -5
+            to: 0
+            duration: 180
+            easing.type: Easing.OutCubic
+        }
+    }
+    SequentialAnimation {
+        id: closing
+        NumberAnimation {
+            target: panel
+            property: "opacity"
+            to: 0
+            duration: 110
+            easing.type: Easing.InCubic
+        }
+        ScriptAction {
+            script: popup.visible = false
+        }
+    }
 
     Rectangle {
         id: panel
