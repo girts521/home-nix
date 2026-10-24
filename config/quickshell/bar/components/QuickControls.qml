@@ -120,7 +120,7 @@ PopupWindow {
                     const parts = line.split("|");
                     return { mac: parts[0], name: parts[1] || parts[0], connected: parts[2] === "yes" };
                 });
-                popup.bluetoothList = list.map(device => ({ ...device, active: false }));
+                popup.bluetoothList = list.map(device => ({ mac: device.mac, name: device.name, connected: device.connected, active: false }));
                 const connected = list.find(device => device.connected);
                 popup.bluetoothName = connected ? connected.name : "No device connected";
                 if (!popup.bluetoothEnabled) popup.bluetoothName = "Turned off";

@@ -16,12 +16,11 @@
 
   outputs = { nixpkgs, home-manager, ... }@inputs:
   let
-    # nixGL supplies the host NVIDIA EGL/OpenGL libraries to Nix-built apps.
-    # The overlay is only used by the Master PC's service override below.
+    # Keep the desktop package set on this flake's nixpkgs; nixGL's pinned
+    # nixpkgs is used separately for its version-specific NVIDIA wrapper.
     pkgs = import nixpkgs {
       system = "x86_64-linux";
       config.allowUnfree = true;
-      overlays = [ inputs.nixgl.overlay ];
     };
   in {
     homeConfigurations = {
