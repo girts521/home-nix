@@ -11,17 +11,28 @@
       url = "github:kackerx/sqlmux/v0.5.0";
       flake = false;      # repo has no flake — treat it as plain source
     };
+    nixgl.url = "github:nix-community/nixGL";
   };
 
-  outputs = { nixpkgs, home-manager, ... }@inputs: {
+  outputs = { nixpkgs, home-manager, ... }@inputs:
+  let
+    # pkgs with the nixGL overlay so pkgs.nixgl.* wrappers exist (masterpc NVIDIA fix).
+    # Overlay only ADDS the nixgl wrappers; nothing on the laptop references them,
+    # so the laptop's build is unchanged.
+    pkgs = import nixpkgs {
+      system = "x86_64-linux";
+      config.allowUnfree = true;
+      overlays = [ inputs.nixgl.overlay ];
+    };
+  in {
     homeConfigurations = {
       "masterpc" = home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+        inherit pkgs;
         extraSpecialArgs = { inherit inputs; };
-        modules = [ ./home/shared.nix ./home/hosts/masterpc/masterpc.nix ];
+        modules = [ ./home/shared.nix ./home/hosts/masterpc/masterpc.nix ./home/modules/quickshell.nix ];
       };
       "laptop" = home-manager.lib.homeManagerConfiguration {
-        pkgs = nixpkgs.legacyPackages.x86_64-linux;
+        inherit pkgs;
         extraSpecialArgs = { inherit inputs; };
         modules = [ ./home/shared.nix ./home/hosts/laptop/laptop.nix ./home/modules/quickshell.nix ];
       };
