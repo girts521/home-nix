@@ -1,5 +1,6 @@
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import QtQuick
 import "components"
 
@@ -120,7 +121,6 @@ Scope {
                         readonly property int btnW: 24
                         readonly property int activeIdx: Math.max(0, bar.wsList.findIndex(w => !!w.is_active))
                         width: bar.wsList.length * btnW + 8
-                        height: 30
 
                         // glider: sits behind the buttons and slides to the active one
                         Rectangle {
