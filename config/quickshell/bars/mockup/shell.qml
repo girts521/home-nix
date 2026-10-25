@@ -1,6 +1,8 @@
 import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
+import Quickshell.Services.Mpris
+import Quickshell.Services.Notifications
 import QtQuick
 import "components"
 
@@ -19,6 +21,53 @@ Scope {
 
     property var workspaces: []
     property bool notifOpen: false
+    property bool dnd: false
+    property var notifications: []
+    readonly property int notificationCount: notificationServer.trackedNotifications.values.length
+
+    NotificationServer {
+        id: notificationServer
+        keepOnReload: true
+        bodySupported: true
+        actionsSupported: true
+        imageSupported: true
+        onNotification: notification => {
+            notification.tracked = true;
+            root.notifications = notificationServer.trackedNotifications.values.slice();
+        }
+        Component.onCompleted: root.notifications = trackedNotifications.values.slice()
+    }
+    Connections {
+        target: notificationServer.trackedNotifications
+        function onObjectInsertedPost() { root.notifications = notificationServer.trackedNotifications.values.slice(); }
+        function onObjectRemovedPost() { root.notifications = notificationServer.trackedNotifications.values.slice(); }
+    }
+    function clearNotifications() {
+        const pending = root.notifications.slice();
+        for (let i = 0; i < pending.length; i++) pending[i].dismiss();
+        root.notifications = notificationServer.trackedNotifications.values.slice();
+    }
+    Process {
+        id: dndProc
+        command: ["swaync-client", "--get-dnd"]
+        stdout: StdioCollector { onStreamFinished: root.dnd = this.text.trim() === "true" }
+    }
+    function toggleDnd() {
+        Quickshell.execDetached(["swaync-client", "--toggle-dnd"]);
+        dndProc.running = true;
+    }
+    Timer {
+        interval: 5000; running: true; repeat: true; triggeredOnStart: true
+        onTriggered: dndProc.running = true
+    }
+
+    readonly property var mediaPlayers: Mpris.players.values
+    readonly property var mediaPlayer: {
+        const players = root.mediaPlayers;
+        for (let i = 0; i < players.length; i++)
+            if (players[i].isPlaying) return players[i];
+        return players.length > 0 ? players[0] : null;
+    }
 
     SysData {
         id: sysData
@@ -65,6 +114,20 @@ Scope {
         onRunningChanged: if (!running) reconnect.start()
     }
     Timer { id: reconnect; interval: 1500; onTriggered: niriEvents.running = true }
+
+    // Niri's event stream sends an initial event snapshot after connecting.
+    // This fallback guarantees useful workspaces even if the first lines are missed.
+    Process {
+        id: workspaceSnapshot
+        command: ["niri", "msg", "--json", "workspaces"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try { root.workspaces = JSON.parse(this.text); }
+                catch (e) { console.warn("Cannot read niri workspaces:", e); }
+            }
+        }
+    }
+    Timer { interval: 5000; running: true; repeat: true; triggeredOnStart: true; onTriggered: workspaceSnapshot.running = true }
 
     // Keep wifi / bluetooth / audio lists fresh while the bar is alive.
     Timer { interval: 10000; running: true; repeat: true; onTriggered: sysData.refreshDevices() }
@@ -186,18 +249,16 @@ Scope {
                 }
 
                 // ---- CENTER: media chip (opens media popup) ----
-                Chip {
+                MediaChip {
                     id: mediaChip
                     anchors.centerIn: parent
-                    width: Math.min(320, parent.width * 0.3)
-                    radius: 15
-                    fillColor: Qt.rgba(root.dark.r, root.dark.g, root.dark.b, 0.4)
-                    hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
-                    borderColor: Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.15)
-                    glyph: "🌐"
-                    label: "Synthwave Radio — Lofi Girl"
+                    availableWidth: Math.max(120, parent.width * 0.3)
+                    player: root.mediaPlayer
                     textColor: root.fg
                     iconColor: "#38bdf8"
+                    fillColor: root.dark
+                    hoverColor: root.secondary
+                    borderColor: root.fg
                     highlighted: bar.openPanel === "media"
                     onClicked: bar.toggle("media")
                 }
@@ -303,7 +364,7 @@ Scope {
                     }
                     // Notifications bell
                     Chip {
-                        glyph: "🔔"; label: "4"
+                        glyph: "🔔"; label: String(root.notificationCount)
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         textColor: root.fg; iconColor: root.accent
@@ -345,13 +406,14 @@ Scope {
             }
             MediaPanel {
                 anchor.window: bar; anchorItem: mediaChip; open: bar.openPanel === "media"
+                player: root.mediaPlayer
                 bgColor: root.bg; fgColor: root.fg; accentColor: root.accent; secondaryColor: root.secondary
                 onDismissed: bar.openPanel = ""
             }
         }
     }
 
-    // Notifications drawer: full-height layer window on the primary screen.
+    // Native notification center overlay on the primary screen.
     PanelWindow {
         id: notifWindow
         screen: Quickshell.screens[0]
@@ -366,8 +428,12 @@ Scope {
             width: notifWindow.implicitWidth
             height: notifWindow.height
             open: root.notifOpen
+            notifications: root.notifications
+            dnd: root.dnd
             bg: root.bg; fg: root.fg; accent: root.accent; secondary: root.secondary
             onClosed: root.notifOpen = false
+            onClearRequested: root.clearNotifications()
+            onDndToggled: root.toggleDnd()
         }
     }
 }

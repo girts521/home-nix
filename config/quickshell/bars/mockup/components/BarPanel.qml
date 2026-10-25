@@ -29,16 +29,21 @@ PopupWindow {
     visible: open || frame.opacity > 0.01
     grabFocus: open
 
-    // Position: item-relative rect. Centered under the chip, clamped inside the bar.
-    anchor.item: anchorItem
+    // Position in the parent bar window's content coordinates. Do not use
+    // anchor.item here: the caller supplies anchor.window and item anchoring
+    // clears it, which used to make barWidth zero and pin every popup to x=6.
     anchor.rect.x: {
-        if (!anchorItem) return 0;
-        const origin = anchorItem.mapToItem(null, 0, 0);
+        if (!anchorItem || !anchor.window) return 0;
+        const origin = anchorItem.mapToItem(anchor.window.contentItem, 0, 0);
         const want = origin.x + anchorItem.width / 2 - panelWidth / 2;
-        const clamped = Math.max(6, Math.min(barWidth - panelWidth - 6, want));
-        return clamped - origin.x;
+        const maxX = Math.max(6, barWidth - panelWidth - 6);
+        return Math.max(6, Math.min(maxX, want));
     }
-    anchor.rect.y: anchorItem ? anchorItem.height + 6 : 0
+    anchor.rect.y: {
+        if (!anchorItem || !anchor.window) return 0;
+        const origin = anchorItem.mapToItem(anchor.window.contentItem, 0, 0);
+        return origin.y + anchorItem.height + 6;
+    }
 
     onVisibleChanged: {
         if (!visible && open) pop.dismissed();

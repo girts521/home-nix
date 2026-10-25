@@ -51,7 +51,7 @@ BarPanel {
                 model: sys.cpuCores
                 Rectangle {
                     required property var modelData
-                    width: (parent.width - 4 * 15) / 16
+                    width: Math.max(2, (parent.width - 4 * (sys.cpuCores.length - 1)) / sys.cpuCores.length)
                     height: Math.max(4, parent.height * modelData / 100)
                     anchors.bottom: parent.bottom
                     radius: 3
