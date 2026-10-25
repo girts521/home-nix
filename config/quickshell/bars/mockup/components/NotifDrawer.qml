@@ -13,7 +13,6 @@ Rectangle {
 
     signal closed()
 
-    // Parent (the drawer window) sets anchors.fill; we only slide horizontally.
     color: Qt.rgba(bg.r, bg.g, bg.b, 0.95)
     border.width: 1
     border.color: Qt.rgba(accent.r, accent.g, accent.b, 0.3)

@@ -2,12 +2,11 @@ import Quickshell
 import QtQuick
 
 // Shared floating panel for every popup in the mockup bar.
-// Centers horizontally under its anchor item, clamps to the screen edges,
-// fades in/out, and reports dismissal (click outside) back to the bar.
+// Positioned relative to the chip that opened it (anchorItem), centered under
+// that chip, and clamped to the bar window's horizontal extent.
 PopupWindow {
     id: pop
 
-    property var barWindow
     property Item anchorItem
     property bool open: false
     property real panelWidth: 320
@@ -17,25 +16,29 @@ PopupWindow {
     property color accent: "#8e81d9"
     property color secondary: "#3f5ac8"
 
-    // Emitted when the compositor dismisses the popup (e.g. click outside).
+    // Emitted when the popup closes because the user clicked outside it.
     signal dismissed()
 
     default property alias content: body.data
 
+    readonly property real barWidth: anchor.window ? anchor.window.width : 0
+
     implicitWidth: panelWidth
-    implicitHeight: body.height + 32
+    implicitHeight: body.implicitHeight + 32
     color: "transparent"
     visible: open || frame.opacity > 0.01
     grabFocus: open
 
-    anchor.window: barWindow
+    // Position: item-relative rect. Centered under the chip, clamped inside the bar.
+    anchor.item: anchorItem
     anchor.rect.x: {
-        if (!anchorItem || !barWindow) return 0;
-        const p = anchorItem.mapToItem(null, 0, 0);
-        const x = Math.round(p.x + anchorItem.width / 2 - pop.implicitWidth / 2);
-        return Math.max(6, Math.min(barWindow.width - pop.implicitWidth - 6, x));
+        if (!anchorItem) return 0;
+        const origin = anchorItem.mapToItem(null, 0, 0);
+        const want = origin.x + anchorItem.width / 2 - panelWidth / 2;
+        const clamped = Math.max(6, Math.min(barWidth - panelWidth - 6, want));
+        return clamped - origin.x;
     }
-    anchor.rect.y: barWindow ? barWindow.height + 4 : 0
+    anchor.rect.y: anchorItem ? anchorItem.height + 6 : 0
 
     onVisibleChanged: {
         if (!visible && open) pop.dismissed();

@@ -1,6 +1,5 @@
 import Quickshell
 import Quickshell.Io
-import Quickshell.Wayland
 import QtQuick
 import "components"
 
@@ -113,34 +112,35 @@ Scope {
                     Rectangle {
                         id: wsBox
                         height: 30
-                        width: wsRow.implicitWidth + 8
                         radius: 8
                         color: Qt.rgba(root.dark.r, root.dark.g, root.dark.b, 0.5)
                         border.width: 1
                         border.color: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
 
+                        readonly property int btnW: 24
+                        readonly property int activeIdx: Math.max(0, bar.wsList.findIndex(w => !!w.is_active))
+                        width: bar.wsList.length * btnW + 8
+                        height: 30
+
+                        // glider: sits behind the buttons and slides to the active one
+                        Rectangle {
+                            id: glider
+                            x: 4 + wsBox.activeIdx * wsBox.btnW
+                            y: (wsBox.height - height) / 2
+                            width: wsBox.btnW; height: 22; radius: 6
+                            color: root.accent
+                            Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
+                        }
+
                         Row {
-                            id: wsRow
-                            anchors.centerIn: parent
+                            x: 4
+                            anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
-
-                            // glider behind the active workspace (slides between buttons)
-                            Rectangle {
-                                id: glider
-                                readonly property int activeIdx: Math.max(0, bar.wsList.findIndex(w => !!w.is_active))
-                                width: 26; height: 22; radius: 6
-                                anchors.verticalCenter: parent.verticalCenter
-                                x: activeIdx * 26
-                                color: root.accent
-                                Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
-                            }
-
                             Repeater {
                                 model: bar.wsList
                                 Item {
                                     required property var modelData
-                                    required property int index
-                                    width: 26; height: 22
+                                    width: wsBox.btnW; height: 30
                                     Text {
                                         anchors.centerIn: parent
                                         text: modelData.name || String(modelData.idx)
@@ -363,7 +363,8 @@ Scope {
 
         NotifDrawer {
             id: notifDrawer
-            anchors.fill: parent
+            width: notifWindow.implicitWidth
+            height: notifWindow.height
             open: root.notifOpen
             bg: root.bg; fg: root.fg; accent: root.accent; secondary: root.secondary
             onClosed: root.notifOpen = false

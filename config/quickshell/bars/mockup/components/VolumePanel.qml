@@ -129,8 +129,8 @@ BarPanel {
                 anchors.fill: parent
                 anchors.topMargin: -8; anchors.bottomMargin: -8
                 cursorShape: Qt.PointingHandCursor
-                onPressed: function(m) { setVol(m.x) }
-                onPositionChanged: function(m) { if (pressed) setVol(m.x) }
+                onPressed: mouse => setVol(mouse.x)
+                onPositionChanged: mouse => { if (pressed) setVol(mouse.x) }
                 function setVol(x) {
                     const v = Math.max(0, Math.min(1, x / track.width));
                     Quickshell.execDetached(["wpctl", "set-volume", panel.targetId, v.toFixed(2)]);
