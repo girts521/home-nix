@@ -34,5 +34,5 @@ in
   # Nix-built Quickshell needs the host NVIDIA EGL/OpenGL stack on this machine.
   # nixGL auto-detects the installed driver; keep this override host-specific.
   systemd.user.services.quickshell.Service.ExecStart = lib.mkForce
-    "${nixgl.nixGLNvidia}/bin/nixGLNvidia-${nvidiaDriverVersion} ${pkgs.quickshell}/bin/quickshell --config bar";
+    "${nixgl.nixGLNvidia}/bin/nixGLNvidia-${nvidiaDriverVersion} ${pkgs.quickshell}/bin/quickshell --config ${config.home-nix.bar}";
 }
