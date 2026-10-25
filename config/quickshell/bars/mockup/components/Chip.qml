@@ -1,13 +1,16 @@
 import QtQuick
+import "." as MockupComponents
 
 Rectangle {
     id: chip
     property string glyph: ""
     property string label: ""
-    property color textColor: "#c6cff5"
-    property color iconColor: "#8e81d9"
+    property color textColor: MockupComponents.Palette.fg
+    property color iconColor: MockupComponents.Palette.accent
+    property color mutedColor: MockupComponents.Palette.muted
+    property color brightColor: MockupComponents.Palette.bright
     property color fillColor: "transparent"
-    property color hoverColor: "#3f5ac8"
+    property color hoverColor: MockupComponents.Palette.secondary
     property color borderColor: "transparent"
     property int iconSize: 14
     property int horizontalPadding: 8
@@ -18,6 +21,7 @@ Rectangle {
     property bool bold: false
     property string iconTone: "accent"
     property string uiFont: "Inter"
+
     signal clicked()
 
     height: 30
@@ -37,6 +41,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             name: chip.glyph
             tone: chip.iconTone
+            tint: chip.iconColor
             size: chip.iconSize
         }
         Text {

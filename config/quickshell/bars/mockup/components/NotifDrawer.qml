@@ -1,14 +1,15 @@
 import QtQuick
+import "." as MockupComponents
 import QtQuick.Layouts
 
 Rectangle {
     id: drawer
     property bool open: false
-    property color bg: "#122957"
-    property color fg: "#c6cff5"
-    property color dark: "#0a1633"
-    property color accent: "#8e81d9"
-    property color secondary: "#3f5ac8"
+    property color bg: MockupComponents.Palette.bg
+    property color fg: MockupComponents.Palette.fg
+    property color dark: MockupComponents.Palette.dark
+    property color accent: MockupComponents.Palette.accent
+    property color secondary: MockupComponents.Palette.secondary
     property string uiFont: "Inter"
     property var notifications: []
     property bool dnd: false
@@ -107,7 +108,7 @@ Rectangle {
             anchors.rightMargin: 16
             anchors.verticalCenter: parent.verticalCenter
             text: "Clear All"
-            color: clearMouse.containsMouse ? "#fb7185" : drawer.fg
+            color: clearMouse.containsMouse ? MockupComponents.Palette.error : drawer.fg
             font.pixelSize: 11
             font.family: drawer.uiFont
             MouseArea {
@@ -163,7 +164,7 @@ Rectangle {
                 Text {
                     text: modelData.summary || modelData.appName || modelData.desktopEntry || "Notification"
                     color: /discord|message|chat/i.test(modelData.appName || modelData.desktopEntry || "")
-                        ? "#38bdf8" : drawer.accent
+                        ? MockupComponents.Palette.cyan : drawer.accent
                     font.bold: true
                     font.pixelSize: 12
                     font.family: drawer.uiFont

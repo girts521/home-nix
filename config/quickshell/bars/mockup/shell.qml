@@ -5,18 +5,37 @@ import Quickshell.Services.Mpris
 import Quickshell.Services.Notifications
 import QtQuick
 import "components"
+import "components"
+import "components" as MockupComponents
 
 // Mockup bar: a port of reference.html (../reference.html) to Quickshell.
 // Layout, colors, popups and behaviour follow the HTML. Data comes from SysData.
 Scope {
     id: root
 
-    // Match the approved HTML palette exactly.
-    property color bg: "#122957"
-    property color fg: "#c6cff5"
-    property color accent: "#8e81d9"
-    property color secondary: "#3f5ac8"
-    property color dark: "#0a1633"
+    // Palette is one watched singleton, shared by the bar and every component.
+    property color bg: MockupComponents.Palette.bg
+    property color fg: MockupComponents.Palette.fg
+    property color dark: MockupComponents.Palette.dark
+    property color red: MockupComponents.Palette.red
+    property color green: MockupComponents.Palette.green
+    property color yellow: MockupComponents.Palette.yellow
+    property color secondary: MockupComponents.Palette.secondary
+    property color accent: MockupComponents.Palette.accent
+    property color blue: MockupComponents.Palette.cyan
+    property color light: MockupComponents.Palette.light
+    property color muted: MockupComponents.Palette.muted
+    property color brightRed: MockupComponents.Palette.brightRed
+    property color brightGreen: MockupComponents.Palette.brightGreen
+    property color brightYellow: MockupComponents.Palette.brightYellow
+    property color brightBlue: MockupComponents.Palette.brightBlue
+    property color brightPurple: MockupComponents.Palette.brightPurple
+    property color brightCyan: MockupComponents.Palette.brightCyan
+    property color bright: MockupComponents.Palette.bright
+    property color subtle: MockupComponents.Palette.subtle
+    property color warning: MockupComponents.Palette.warning
+    property color error: MockupComponents.Palette.error
+    function toneColor(tone) { return MockupComponents.Palette.toneColor(tone); }
 
     FontLoader { id: inter; source: "components/fonts/Inter.ttf" }
     readonly property string uiFont: inter.status === FontLoader.Ready ? inter.name : "Inter"
@@ -105,6 +124,11 @@ Scope {
     SysData {
         id: sysData
         bg: root.bg; fg: root.fg; accent: root.accent; secondary: root.secondary; dark: root.dark
+        green: root.green; blue: root.blue; warning: root.warning; muted: root.muted
+        bright: root.bright; error: root.error; subtle: root.subtle
+        red: root.red; yellow: root.yellow; light: root.light
+        brightRed: root.brightRed; brightGreen: root.brightGreen; brightYellow: root.brightYellow
+        brightBlue: root.brightBlue; brightPurple: root.brightPurple; brightCyan: root.brightCyan
     }
 
     SystemClock { id: clock; precision: SystemClock.Seconds }
@@ -297,7 +321,7 @@ Scope {
                     player: root.mediaPlayer
                     cavaLevels: root.cavaLevels
                     textColor: root.fg
-                    iconColor: "#38bdf8"
+                    iconColor: MockupComponents.Palette.cyan
                     fillColor: Qt.rgba(root.dark.r, root.dark.g, root.dark.b, 0.4)
                     hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                     borderColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.125)
@@ -364,7 +388,7 @@ Scope {
                         highlighted: root.openPanel === "wifi" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("wifi")
                         Rectangle {
-                            width: 6; height: 6; radius: 3; color: "#34d399"
+                            width: 6; height: 6; radius: 3; color: MockupComponents.Palette.green
                             anchors.right: parent.right; anchors.bottom: parent.bottom
                             anchors.margins: 3
                             visible: sysData.wifiOn
@@ -381,7 +405,7 @@ Scope {
                         highlighted: root.openPanel === "bt" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("bt")
                         Rectangle {
-                            width: 6; height: 6; radius: 3; color: "#38bdf8"
+                            width: 6; height: 6; radius: 3; color: MockupComponents.Palette.cyan
                             anchors.right: parent.right; anchors.bottom: parent.bottom
                             anchors.margins: 3
                             visible: sysData.btOn
@@ -408,7 +432,7 @@ Scope {
                         fillColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.2)
                         borderColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.4)
                         hoverColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.3)
-                        textColor: "#ffffff"; iconColor: root.accent
+                        textColor: MockupComponents.Palette.bright; iconColor: root.accent
                         highlighted: root.openPanel === "clock" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("clock")
                     }
@@ -423,7 +447,7 @@ Scope {
                             anchors.right: parent.right; anchors.top: parent.top
                             anchors.rightMargin: 1; anchors.topMargin: 1
                             width: 14; height: 14; radius: 7; color: root.accent
-                            Text { anchors.centerIn: parent; text: root.notificationCount; color: "white"; font.pixelSize: 9; font.bold: true; font.family: root.uiFont }
+                            Text { anchors.centerIn: parent; text: root.notificationCount; color: MockupComponents.Palette.bright; font.pixelSize: 9; font.bold: true; font.family: root.uiFont }
                         }
                         onClicked: {
                             root.closePopup();

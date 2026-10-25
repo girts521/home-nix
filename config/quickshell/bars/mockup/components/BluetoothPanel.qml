@@ -1,5 +1,6 @@
 import Quickshell
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
@@ -75,7 +76,7 @@ BarPanel {
                     Column {
                         anchors.verticalCenter: parent.verticalCenter
                         Text { text: modelData.name; color: panel.fg; font.bold: true; font.pixelSize: 12; font.family: panel.uiFont; elide: Text.ElideRight; width: 175 }
-                        Text { text: "Audio · Connected"; color: "#34d399"; font.pixelSize: 10; font.family: panel.uiFont }
+                        Text { text: "Audio · Connected"; color: MockupComponents.Palette.green; font.pixelSize: 10; font.family: panel.uiFont }
                     }
                 }
 
@@ -85,7 +86,7 @@ BarPanel {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 4
                     Icon { anchors.verticalCenter: parent.verticalCenter; name: "battery-medium"; tone: "emerald"; size: 14 }
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.battery !== undefined ? modelData.battery + "%" : "—%"; color: "#34d399"; font.pixelSize: 10; font.family: "monospace" }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.battery !== undefined ? modelData.battery + "%" : "—%"; color: MockupComponents.Palette.green; font.pixelSize: 10; font.family: "monospace" }
                 }
 
                 MouseArea { id: deviceMa; anchors.fill: parent; hoverEnabled: true; z: -1 }

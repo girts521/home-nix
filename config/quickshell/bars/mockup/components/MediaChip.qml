@@ -1,14 +1,15 @@
 import QtQuick
+import "." as MockupComponents
 
 Rectangle {
     id: chip
     property var player: null
     property var cavaLevels: []
-    property color textColor: "#c6cff5"
-    property color iconColor: "#38bdf8"
-    property color fillColor: "#0a1633"
-    property color hoverColor: "#3f5ac8"
-    property color borderColor: "#8e81d9"
+    property color textColor: MockupComponents.Palette.fg
+    property color iconColor: MockupComponents.Palette.cyan
+    property color fillColor: MockupComponents.Palette.dark
+    property color hoverColor: MockupComponents.Palette.secondary
+    property color borderColor: MockupComponents.Palette.accent
     property bool highlighted: false
     property real availableWidth: 320
     readonly property string artworkUrl: player && player.trackArtUrl ? player.trackArtUrl : ""
@@ -106,7 +107,7 @@ Rectangle {
                     height: Math.min(12, 1 + ((chip.cavaLevels.length ? chip.cavaLevels[Math.floor(index * chip.cavaLevels.length / 6)] : 0) || 0) * 11)
                     width: 3
                     radius: 2
-                    color: "#8e81d9"
+                    color: MockupComponents.Palette.accent
                     anchors.bottom: parent.bottom
                     Behavior on height { NumberAnimation { duration: 65; easing.type: Easing.OutCubic } }
                 }

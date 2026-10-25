@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
@@ -13,10 +14,10 @@ BarPanel {
     panelWidth: 372
     contentSpacing: 14
 
-    property color bgColor: "#122957"
-    property color fgColor: "#c6cff5"
-    property color accentColor: "#8e81d9"
-    property color secondaryColor: "#3f5ac8"
+    property color bgColor: MockupComponents.Palette.bg
+    property color fgColor: MockupComponents.Palette.fg
+    property color accentColor: MockupComponents.Palette.accent
+    property color secondaryColor: MockupComponents.Palette.secondary
 
     property int viewYear: now.getFullYear()
     property int viewMonth: now.getMonth()
@@ -60,11 +61,11 @@ BarPanel {
         return "Current conditions";
     }
     readonly property color weatherTint: {
-        if (weatherCode >= 95) return "#fbbf24";
-        if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)) return "#7dd3fc";
-        if ((weatherCode >= 71 && weatherCode <= 77) || (weatherCode >= 85 && weatherCode <= 86)) return "#bfdbfe";
-        if (weatherCode === 45 || weatherCode === 48 || weatherCode === 3) return "#cbd5e1";
-        return "#fcd34d";
+        if (weatherCode >= 95) return MockupComponents.Palette.warning;
+        if ((weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82)) return MockupComponents.Palette.cyan;
+        if ((weatherCode >= 71 && weatherCode <= 77) || (weatherCode >= 85 && weatherCode <= 86)) return MockupComponents.Palette.light;
+        if (weatherCode === 45 || weatherCode === 48 || weatherCode === 3) return MockupComponents.Palette.muted;
+        return MockupComponents.Palette.yellow;
     }
     readonly property bool rainEffect: weatherAvailable && (
         (weatherCode >= 51 && weatherCode <= 67) || (weatherCode >= 80 && weatherCode <= 82) || weatherCode >= 95)
@@ -137,8 +138,8 @@ BarPanel {
             radius: 12
             clip: true
             gradient: Gradient {
-                GradientStop { position: 0; color: panel.stormEffect ? "#26355c" : (panel.rainEffect || panel.snowEffect ? "#1c4770" : "#314a83") }
-                GradientStop { position: 1; color: panel.stormEffect ? "#172744" : (panel.rainEffect || panel.snowEffect ? "#102c50" : "#1b315e") }
+                GradientStop { position: 0; color: panel.stormEffect ? Qt.darker(panel.bgColor, 1.2) : (panel.rainEffect || panel.snowEffect ? Qt.darker(panel.secondaryColor, 1.2) : Qt.lighter(panel.bgColor, 1.18)) }
+                GradientStop { position: 1; color: panel.stormEffect ? Qt.darker(panel.bgColor, 1.5) : (panel.rainEffect || panel.snowEffect ? Qt.darker(panel.bgColor, 1.35) : panel.bgColor) }
             }
             border.width: 1
             border.color: Qt.rgba(panel.weatherTint.r, panel.weatherTint.g, panel.weatherTint.b, 0.32)
@@ -183,7 +184,7 @@ BarPanel {
             Rectangle {
                 anchors.fill: parent
                 radius: 12
-                color: "#dbeafe"
+                color: MockupComponents.Palette.light
                 opacity: panel.stormEffect && panel.weatherAnimationPhase % 37 < 2 ? 0.12 : 0
                 Behavior on opacity { NumberAnimation { duration: 90 } }
             }
@@ -223,7 +224,7 @@ BarPanel {
                     spacing: 1
                     Text {
                         text: panel.weatherAvailable ? (panel.weatherTemperature + "°") : "—°"
-                        color: "#ffffff"
+                        color: MockupComponents.Palette.bright
                         font.pixelSize: 34
                         font.weight: Font.DemiBold
                         font.family: panel.uiFont
@@ -366,7 +367,7 @@ BarPanel {
                         if (day < 1) return new Date(panel.viewYear, panel.viewMonth, 0).getDate() + day;
                         return "";
                     }
-                    color: isSelected ? "#ffffff"
+                    color: isSelected ? MockupComponents.Palette.bright
                         : (inMonth ? panel.fg : Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.2))
                     font.pixelSize: 11
                     font.family: "monospace"

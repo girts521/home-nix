@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
@@ -90,7 +91,7 @@ BarPanel {
             Row {
                 anchors.fill: parent
                 Rectangle { width: parent.width * panel.activeFrac; height: parent.height; color: panel.accent }
-                Rectangle { width: parent.width * panel.bufFrac; height: parent.height; color: "#38bdf8" }
+                Rectangle { width: parent.width * panel.bufFrac; height: parent.height; color: MockupComponents.Palette.cyan }
                 Rectangle { width: parent.width * panel.cacheFrac; height: parent.height; color: Qt.rgba(panel.secondary.r, panel.secondary.g, panel.secondary.b, 0.6) }
             }
         }
@@ -105,7 +106,7 @@ BarPanel {
             Row {
                 width: parent.width / 3
                 spacing: 3
-                Rectangle { width: 8; height: 8; radius: 2; color: "#38bdf8"; anchors.verticalCenter: parent.verticalCenter }
+                Rectangle { width: 8; height: 8; radius: 2; color: MockupComponents.Palette.cyan; anchors.verticalCenter: parent.verticalCenter }
                 Text { text: "Buffers " + sys.ramBuffersGb.toFixed(1) + "G"; color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.7); font.pixelSize: 10; font.family: "monospace" }
             }
             Row {
@@ -137,7 +138,7 @@ BarPanel {
                     anchors.leftMargin: 8
                     anchors.verticalCenter: parent.verticalCenter
                     Text { text: modelData.k; color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.5); font.pixelSize: 10; font.family: "monospace" }
-                    Text { text: modelData.v; color: modelData.k === "PRESSURE" && panel.usedFrac < 0.6 ? "#34d399" : panel.fg; font.pixelSize: 10; font.family: "monospace" }
+                    Text { text: modelData.v; color: modelData.k === "PRESSURE" && panel.usedFrac < 0.6 ? MockupComponents.Palette.green : panel.fg; font.pixelSize: 10; font.family: "monospace" }
                 }
             }
         }

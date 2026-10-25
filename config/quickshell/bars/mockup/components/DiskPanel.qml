@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
@@ -107,7 +108,7 @@ BarPanel {
                         anchors.right: parent.right
                         anchors.verticalCenter: parent.verticalCenter
                         text: modelData.usedHuman + " / " + modelData.sizeHuman
-                        color: modelData.percent > 75 ? "#fbbf24" : panel.fg
+                        color: modelData.percent > 75 ? MockupComponents.Palette.warning : panel.fg
                         font.pixelSize: 12
                         font.family: "monospace"
                     }
@@ -141,13 +142,13 @@ BarPanel {
                     width: parent.width
                     height: 6
                     radius: 3
-                    color: Qt.rgba(1, 1, 1, 0.08)
+                    color: Qt.rgba(MockupComponents.Palette.fg.r, MockupComponents.Palette.fg.g, MockupComponents.Palette.fg.b, 0.08)
                     clip: true
                     Rectangle {
                         height: parent.height
                         radius: 3
                         width: parent.width * Math.max(0, Math.min(100, modelData.percent)) / 100
-                        color: modelData.percent > 75 ? "#fbbf24" : panel.accent
+                        color: modelData.percent > 75 ? MockupComponents.Palette.warning : panel.accent
                         Behavior on width { NumberAnimation { duration: 600 } }
                     }
                 }

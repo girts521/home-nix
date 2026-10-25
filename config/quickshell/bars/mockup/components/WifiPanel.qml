@@ -1,5 +1,6 @@
 import Quickshell
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
@@ -161,7 +162,7 @@ BarPanel {
                         Column {
                             anchors.verticalCenter: parent.verticalCenter
                             Text { text: sys.wifiSsid; color: panel.fg; font.bold: true; font.pixelSize: 12; font.family: panel.uiFont; elide: Text.ElideRight; width: 170 }
-                            Text { text: "Connected" + (sys.wifiBand ? " · " + sys.wifiBand : ""); color: "#34d399"; font.pixelSize: 10; font.family: panel.uiFont }
+                            Text { text: "Connected" + (sys.wifiBand ? " · " + sys.wifiBand : ""); color: MockupComponents.Palette.green; font.pixelSize: 10; font.family: panel.uiFont }
                         }
                     }
                     Row {
@@ -176,7 +177,7 @@ BarPanel {
                                 height: 4 + index * 2
                                 radius: 1
                                 anchors.bottom: parent.bottom
-                                color: sys.wifiSignal >= (index + 1) * 25 ? "#34d399" : Qt.rgba(0.2, 0.8, 0.5, 0.25)
+                                color: sys.wifiSignal >= (index + 1) * 25 ? MockupComponents.Palette.green : Qt.rgba(MockupComponents.Palette.green.r, MockupComponents.Palette.green.g, MockupComponents.Palette.green.b, 0.25)
                             }
                         }
                     }

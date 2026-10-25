@@ -1,6 +1,7 @@
 import Quickshell
 import Quickshell.Wayland
 import QtQuick
+import "." as MockupComponents
 
 // Shared popup frame and HTML-style anchor placement. Individual panels retain
 // the reference's own padding, radius, height, and internal arrangement.
@@ -15,11 +16,18 @@ PopupWindow {
     // Chips sit 10px inside the 50px bar surface; 12px places the popup
     // two pixels below the bar's bottom edge rather than overlapping it.
     property int dropGap: 12
-    property color bg: "#122957"
-    property color fg: "#c6cff5"
-    property color dark: "#0a1633"
-    property color accent: "#8e81d9"
-    property color secondary: "#3f5ac8"
+    property color bg: MockupComponents.Palette.bg
+    property color fg: MockupComponents.Palette.fg
+    property color dark: MockupComponents.Palette.dark
+    property color accent: MockupComponents.Palette.accent
+    property color secondary: MockupComponents.Palette.secondary
+    property color green: MockupComponents.Palette.green
+    property color blue: MockupComponents.Palette.cyan
+    property color warning: MockupComponents.Palette.warning
+    property color muted: MockupComponents.Palette.muted
+    property color bright: MockupComponents.Palette.bright
+    property color error: MockupComponents.Palette.error
+    property color subtle: MockupComponents.Palette.subtle
     property string uiFont: "Inter"
     signal dismissed()
     default property alias content: body.data

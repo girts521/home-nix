@@ -1,13 +1,14 @@
 import Quickshell
 import Quickshell.Services.Mpris
 import QtQuick
+import "." as MockupComponents
 
 BarPanel {
     id: panel
-    property color bgColor: "#122957"
-    property color fgColor: "#c6cff5"
-    property color accentColor: "#8e81d9"
-    property color secondaryColor: "#3f5ac8"
+    property color bgColor: MockupComponents.Palette.bg
+    property color fgColor: MockupComponents.Palette.fg
+    property color accentColor: MockupComponents.Palette.accent
+    property color secondaryColor: MockupComponents.Palette.secondary
     property var player: null
     property var players: []
     property var cavaLevels: [0, 0, 0, 0, 0, 0]
@@ -20,7 +21,7 @@ BarPanel {
     fg: fgColor
     accent: accentColor
     secondary: secondaryColor
-    dark: "#0a1633"
+    dark: MockupComponents.Palette.dark
     uiFont: "Inter"
     panelWidth: 320
     contentInset: 16
@@ -112,7 +113,7 @@ BarPanel {
                 Text {
                     id: playerName
                     text: panel.player ? panel.player.identity : ""
-                    color: "#7dd3fc"
+                    color: MockupComponents.Palette.cyan
                     font.pixelSize: 9
                     font.bold: true
                     font.family: panel.uiFont

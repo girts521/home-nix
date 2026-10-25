@@ -1,0 +1,17 @@
+module MockupComponents
+BarPanel 1.0 BarPanel.qml
+BluetoothPanel 1.0 BluetoothPanel.qml
+Chip 1.0 Chip.qml
+ClockPanel 1.0 ClockPanel.qml
+CpuPanel 1.0 CpuPanel.qml
+DiskPanel 1.0 DiskPanel.qml
+Icon 1.0 Icon.qml
+MediaChip 1.0 MediaChip.qml
+MediaPanel 1.0 MediaPanel.qml
+NotifDrawer 1.0 NotifDrawer.qml
+singleton Palette 1.0 Palette.qml
+RamPanel 1.0 RamPanel.qml
+SysData 1.0 SysData.qml
+Toggle 1.0 Toggle.qml
+VolumePanel 1.0 VolumePanel.qml
+WifiPanel 1.0 WifiPanel.qml

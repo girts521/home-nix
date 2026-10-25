@@ -1,18 +1,35 @@
 import Quickshell
 import Quickshell.Io
 import QtQuick
+import "." as MockupComponents
 
 // Single data source for the whole mockup bar. Every popup reads from here.
 // Real data where a cheap source exists (/proc, df, wpctl, nmcli, bluetoothctl).
 Scope {
     id: sys
 
-    // Palette (pywal fallbacks, same as the mockup)
-    property color bg: "#122957"
-    property color fg: "#c6cff5"
-    property color accent: "#8e81d9"
-    property color secondary: "#3f5ac8"
-    property color dark: "#0a1633"
+    // These bindings are the only color source for the system-data popups.
+    property color bg: MockupComponents.Palette.bg
+    property color fg: MockupComponents.Palette.fg
+    property color dark: MockupComponents.Palette.dark
+    property color red: MockupComponents.Palette.red
+    property color green: MockupComponents.Palette.green
+    property color yellow: MockupComponents.Palette.yellow
+    property color secondary: MockupComponents.Palette.secondary
+    property color accent: MockupComponents.Palette.accent
+    property color blue: MockupComponents.Palette.cyan
+    property color light: MockupComponents.Palette.light
+    property color muted: MockupComponents.Palette.muted
+    property color brightRed: MockupComponents.Palette.brightRed
+    property color brightGreen: MockupComponents.Palette.brightGreen
+    property color brightYellow: MockupComponents.Palette.brightYellow
+    property color brightBlue: MockupComponents.Palette.brightBlue
+    property color brightPurple: MockupComponents.Palette.brightPurple
+    property color brightCyan: MockupComponents.Palette.brightCyan
+    property color bright: MockupComponents.Palette.bright
+    property color warning: MockupComponents.Palette.warning
+    property color error: MockupComponents.Palette.error
+    property color subtle: MockupComponents.Palette.subtle
 
     // ---- CPU ----
     property string cpuModel: "CPU"
