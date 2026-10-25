@@ -21,7 +21,7 @@ Scope {
     property bool notifOpen: false
 
     SysData {
-        id: sys
+        id: sysData
         bg: root.bg; fg: root.fg; accent: root.accent; secondary: root.secondary; dark: root.dark
     }
 
@@ -67,7 +67,7 @@ Scope {
     Timer { id: reconnect; interval: 1500; onTriggered: niriEvents.running = true }
 
     // Keep wifi / bluetooth / audio lists fresh while the bar is alive.
-    Timer { interval: 10000; running: true; repeat: true; onTriggered: sys.refreshDevices() }
+    Timer { interval: 10000; running: true; repeat: true; onTriggered: sysData.refreshDevices() }
 
     Variants {
         model: Quickshell.screens
@@ -81,7 +81,7 @@ Scope {
             property string openPanel: ""
             function toggle(name) {
                 if (openPanel === name) { openPanel = ""; return; }
-                if (name === "wifi" || name === "bt" || name === "vol") sys.refreshDevices();
+                if (name === "wifi" || name === "bt" || name === "vol") sysData.refreshDevices();
                 openPanel = name;
             }
 
@@ -175,7 +175,7 @@ Scope {
                             spacing: 6
                             Text { text: "⌨"; color: root.secondary; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
                             Text {
-                                text: sys.windowTitle || "—"
+                                text: sysData.windowTitle || "—"
                                 color: root.fg; font.pixelSize: 12
                                 elide: Text.ElideRight
                                 width: Math.min(implicitWidth, 220)
@@ -211,7 +211,7 @@ Scope {
 
                     Chip {
                         id: cpuChipAnchor
-                        glyph: "⟳"; label: sys.cpuPercent + "%"
+                        glyph: "⟳"; label: sysData.cpuPercent + "%"
                         fillColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.2)
                         borderColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.4)
@@ -221,7 +221,7 @@ Scope {
                     }
                     Chip {
                         id: ramChipAnchor
-                        glyph: "▤"; label: sys.ramUsedGb.toFixed(1) + "GB"
+                        glyph: "▤"; label: sysData.ramUsedGb.toFixed(1) + "GB"
                         fillColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.2)
                         borderColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.4)
@@ -233,7 +233,7 @@ Scope {
                         id: diskChipAnchor
                         glyph: "⛁"
                         label: {
-                            const d = sys.disks.find(x => x.mount === "/");
+                            const d = sysData.disks.find(x => x.mount === "/");
                             return d ? d.percent + "%" : "—";
                         }
                         fillColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.2)
@@ -258,7 +258,7 @@ Scope {
                             width: 6; height: 6; radius: 3; color: "#34d399"
                             anchors.right: parent.right; anchors.bottom: parent.bottom
                             anchors.margins: 3
-                            visible: sys.wifiOn
+                            visible: sysData.wifiOn
                         }
                     }
                     // Bluetooth icon with status dot
@@ -275,14 +275,14 @@ Scope {
                             width: 6; height: 6; radius: 3; color: "#38bdf8"
                             anchors.right: parent.right; anchors.bottom: parent.bottom
                             anchors.margins: 3
-                            visible: sys.btOn
+                            visible: sysData.btOn
                         }
                     }
                     // Volume
                     Chip {
                         id: volChipAnchor
                         glyph: "♪"
-                        label: sys.outMuted ? "Muted" : Math.round(sys.outVolume * 100) + "%"
+                        label: sysData.outMuted ? "Muted" : Math.round(sysData.outVolume * 100) + "%"
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         textColor: root.fg; iconColor: root.accent
@@ -314,27 +314,27 @@ Scope {
 
             // ---- Popups (all anchored to this bar) ----
             CpuPanel {
-                anchor.window: bar; anchorItem: cpuChipAnchor; open: bar.openPanel === "cpu"; sys: sys
+                anchor.window: bar; anchorItem: cpuChipAnchor; open: bar.openPanel === "cpu"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             RamPanel {
-                anchor.window: bar; anchorItem: ramChipAnchor; open: bar.openPanel === "ram"; sys: sys
+                anchor.window: bar; anchorItem: ramChipAnchor; open: bar.openPanel === "ram"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             DiskPanel {
-                anchor.window: bar; anchorItem: diskChipAnchor; open: bar.openPanel === "disk"; sys: sys
+                anchor.window: bar; anchorItem: diskChipAnchor; open: bar.openPanel === "disk"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             WifiPanel {
-                anchor.window: bar; anchorItem: wifiChipAnchor; open: bar.openPanel === "wifi"; sys: sys
+                anchor.window: bar; anchorItem: wifiChipAnchor; open: bar.openPanel === "wifi"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             BluetoothPanel {
-                anchor.window: bar; anchorItem: btChipAnchor; open: bar.openPanel === "bt"; sys: sys
+                anchor.window: bar; anchorItem: btChipAnchor; open: bar.openPanel === "bt"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             VolumePanel {
-                anchor.window: bar; anchorItem: volChipAnchor; open: bar.openPanel === "vol"; sys: sys
+                anchor.window: bar; anchorItem: volChipAnchor; open: bar.openPanel === "vol"; sys: sysData
                 onDismissed: bar.openPanel = ""
             }
             ClockPanel {
