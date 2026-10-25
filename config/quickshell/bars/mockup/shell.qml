@@ -11,62 +11,95 @@ import "components"
 Scope {
     id: root
 
-    // Pywal palette with the same fallbacks as the HTML mockup.
-    property var wal: ({})
-    property color bg: wal.special && wal.special.background ? wal.special.background : "#122957"
-    property color fg: wal.special && wal.special.foreground ? wal.special.foreground : "#c6cff5"
-    property color accent: wal.colors && wal.colors.color5 ? wal.colors.color5 : "#8e81d9"
-    property color secondary: wal.colors && wal.colors.color4 ? wal.colors.color4 : "#3f5ac8"
+    // Match the approved HTML palette exactly.
+    property color bg: "#122957"
+    property color fg: "#c6cff5"
+    property color accent: "#8e81d9"
+    property color secondary: "#3f5ac8"
     property color dark: "#0a1633"
+
+    FontLoader { id: inter; source: "components/fonts/Inter.ttf" }
+    readonly property string uiFont: inter.status === FontLoader.Ready ? inter.name : "Inter"
 
     property var workspaces: []
     property bool notifOpen: false
+    // A single popup is shared across monitors so an outside click dismisses
+    // the complete popup state rather than leaving another panel open.
+    property string openPanel: ""
+    property var popupScreen: null
     property bool dnd: false
-    property var notifications: []
-    readonly property int notificationCount: notificationServer.trackedNotifications.values.length
+    readonly property var notifications: notificationServer.trackedNotifications.values
+    readonly property int notificationCount: notifications.length
 
+    // The selected native drawer uses Quickshell's desktop-notifications server.
+    // Only one process can own org.freedesktop.Notifications; SwayNC must not
+    // be running as the competing notification daemon for this config.
     NotificationServer {
         id: notificationServer
-        keepOnReload: true
-        bodySupported: true
         actionsSupported: true
-        imageSupported: true
-        onNotification: notification => {
-            notification.tracked = true;
-            root.notifications = notificationServer.trackedNotifications.values.slice();
-        }
-        Component.onCompleted: root.notifications = trackedNotifications.values.slice()
-    }
-    Connections {
-        target: notificationServer.trackedNotifications
-        function onObjectInsertedPost() { root.notifications = notificationServer.trackedNotifications.values.slice(); }
-        function onObjectRemovedPost() { root.notifications = notificationServer.trackedNotifications.values.slice(); }
+        keepOnReload: true
+        onNotification: notification => { notification.tracked = !root.dnd; }
     }
     function clearNotifications() {
-        const pending = root.notifications.slice();
-        for (let i = 0; i < pending.length; i++) pending[i].dismiss();
-        root.notifications = notificationServer.trackedNotifications.values.slice();
+        while (notificationServer.trackedNotifications.values.length > 0)
+            notificationServer.trackedNotifications.values[0].dismiss();
     }
-    Process {
-        id: dndProc
-        command: ["swaync-client", "--get-dnd"]
-        stdout: StdioCollector { onStreamFinished: root.dnd = this.text.trim() === "true" }
+    function toggleDnd() { root.dnd = !root.dnd; }
+    function closePopup() {
+        root.openPanel = "";
+        root.popupScreen = null;
     }
-    function toggleDnd() {
-        Quickshell.execDetached(["swaync-client", "--toggle-dnd"]);
-        dndProc.running = true;
-    }
-    Timer {
-        interval: 5000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: dndProc.running = true
+    function dismissPopup(name, screen) {
+        // Ignore a late native-dismiss event if the click already switched to
+        // another chip (or opened a popup on a different monitor).
+        if (root.openPanel === name && root.popupScreen === screen)
+            root.closePopup();
     }
 
     readonly property var mediaPlayers: Mpris.players.values
+    // Keep an explicit source selection independent of playback state. Store
+    // both the player reference and identity so it survives list reorder/reload.
+    property var selectedMediaPlayer: null
+    property string selectedMediaPlayerId: ""
     readonly property var mediaPlayer: {
         const players = root.mediaPlayers;
+        if (root.selectedMediaPlayer && players.indexOf(root.selectedMediaPlayer) >= 0)
+            return root.selectedMediaPlayer;
+        if (root.selectedMediaPlayerId) {
+            for (let i = 0; i < players.length; i++)
+                if (players[i].identity === root.selectedMediaPlayerId) return players[i];
+        }
         for (let i = 0; i < players.length; i++)
             if (players[i].isPlaying) return players[i];
         return players.length > 0 ? players[0] : null;
+    }
+    function cycleMediaPlayer() {
+        const players = root.mediaPlayers;
+        if (players.length < 2) return;
+        const current = root.mediaPlayer;
+        const index = players.indexOf(current);
+        const next = players[(index + 1 + players.length) % players.length];
+        root.selectedMediaPlayer = next;
+        root.selectedMediaPlayerId = next.identity || "";
+    }
+    property var cavaLevels: new Array(20).fill(0)
+    Process {
+        id: cavaProcess
+        command: ["cava", "-p", Quickshell.shellDir + "/components/media-cava.conf"]
+        running: !!root.mediaPlayer && root.mediaPlayer.isPlaying
+        stdout: SplitParser {
+            onRead: data => {
+                const parts = data.trim().split(";");
+                if (parts.length < 20) return;
+                root.cavaLevels = parts.slice(0, 20).map(value => {
+                    const parsed = Number(value);
+                    // CAVA's linear 0-1000 amplitude is too small to see at low volume;
+                    // a square-root gain keeps quiet audio responsive without fake motion.
+                    return Number.isFinite(parsed) ? Math.max(0, Math.min(1, Math.sqrt(parsed / 1000) * 1.8)) : 0;
+                });
+            }
+        }
+        onRunningChanged: if (!running) root.cavaLevels = new Array(20).fill(0)
     }
 
     SysData {
@@ -75,16 +108,6 @@ Scope {
     }
 
     SystemClock { id: clock; precision: SystemClock.Seconds }
-
-    FileView {
-        path: Quickshell.env("HOME") + "/.cache/wal/colors.json"
-        watchChanges: true
-        onFileChanged: reload()
-        onLoaded: {
-            try { root.wal = JSON.parse(text()); }
-            catch (e) { console.warn("Cannot read pywal colors:", e); }
-        }
-    }
 
     // Niri workspaces (same event stream as the existing bar).
     Process {
@@ -140,12 +163,15 @@ Scope {
             required property var modelData
             screen: modelData
 
-            // Which popup is open on this bar ("" = none).
-            property string openPanel: ""
             function toggle(name) {
-                if (openPanel === name) { openPanel = ""; return; }
+                root.notifOpen = false;
+                if (root.openPanel === name && root.popupScreen === bar.screen) {
+                    root.closePopup();
+                    return;
+                }
                 if (name === "wifi" || name === "bt" || name === "vol") sysData.refreshDevices();
-                openPanel = name;
+                root.popupScreen = bar.screen;
+                root.openPanel = name;
             }
 
             readonly property var wsList: root.workspaces
@@ -157,20 +183,24 @@ Scope {
             implicitHeight: 50
             exclusiveZone: 60
             color: "transparent"
-
             Rectangle {
                 id: frame
                 anchors.fill: parent
                 radius: 10
-                color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.65)
+                color: Qt.rgba(root.bg.r, root.bg.g, root.bg.b, 0.45)
                 border.width: 1
                 border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.25)
+            }
+            BackgroundEffect.blurRegion: Region { item: frame }
 
-                // ---- LEFT: workspaces + window title ----
+            // ---- LEFT: workspaces + window title ----
                 Row {
+                    id: leftModules
                     anchors.left: parent.left
                     anchors.leftMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
+                    width: implicitWidth
+                    height: 30
                     spacing: 10
 
                     Rectangle {
@@ -183,14 +213,15 @@ Scope {
 
                         readonly property int btnW: 24
                         readonly property int activeIdx: Math.max(0, bar.wsList.findIndex(w => !!w.is_active))
-                        width: bar.wsList.length * btnW + 8
+                        // Four fixed 24px buttons, p-1, and the 1px border.
+                        width: 4 * btnW + 10
 
                         // glider: sits behind the buttons and slides to the active one
                         Rectangle {
                             id: glider
                             x: 4 + wsBox.activeIdx * wsBox.btnW
                             y: (wsBox.height - height) / 2
-                            width: wsBox.btnW; height: 22; radius: 6
+                            width: wsBox.btnW; height: 16; radius: 6
                             color: root.accent
                             Behavior on x { NumberAnimation { duration: 250; easing.type: Easing.OutCubic } }
                         }
@@ -200,16 +231,17 @@ Scope {
                             anchors.verticalCenter: parent.verticalCenter
                             spacing: 0
                             Repeater {
-                                model: bar.wsList
+                                model: [
+                                    { idx: 1, icon: "circle-dot" },
+                                    { idx: 2, icon: "terminal" },
+                                    { idx: 3, icon: "globe" },
+                                    { idx: 4, icon: "folder" }
+                                ]
                                 Item {
                                     required property var modelData
                                     width: wsBox.btnW; height: 30
-                                    Text {
-                                        anchors.centerIn: parent
-                                        text: modelData.name || String(modelData.idx)
-                                        color: modelData.is_active ? "#ffffff" : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, 0.5)
-                                        font.pixelSize: 12; font.bold: true
-                                    }
+                                    readonly property bool active: bar.wsList.some(w => w.idx === modelData.idx && w.is_active)
+                                    Icon { anchors.centerIn: parent; name: modelData.icon; tone: parent.active ? "white" : "muted"; size: 14 }
                                     MouseArea {
                                         anchors.fill: parent
                                         cursorShape: Qt.PointingHandCursor
@@ -225,23 +257,29 @@ Scope {
                     }
 
                     Rectangle {
-                        height: 30
-                        width: Math.min(titleRow.implicitWidth + 16, 250)
+                        id: titleBox
+                        readonly property int maxTitleWidth: bar.screen.width >= 1024 ? 250 : 150
+                        height: 22
+                        width: Math.min(titleRow.implicitWidth + 18, maxTitleWidth)
+                        anchors.verticalCenter: parent.verticalCenter
                         radius: 6
                         color: Qt.rgba(root.dark.r, root.dark.g, root.dark.b, 0.2)
                         border.width: 1
-                        border.color: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.5)
+                        border.color: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.125)
                         Row {
                             id: titleRow
                             anchors.left: parent.left; anchors.leftMargin: 8
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: 6
-                            Text { text: "⌨"; color: root.secondary; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                            spacing: 8
+                            Icon { name: "code-2"; tone: "secondary"; size: 14; anchors.verticalCenter: parent.verticalCenter }
                             Text {
                                 text: sysData.windowTitle || "—"
-                                color: root.fg; font.pixelSize: 12
+                                color: root.fg
+                                font.pixelSize: 13
+                                font.weight: Font.Medium
+                                font.family: root.uiFont
                                 elide: Text.ElideRight
-                                width: Math.min(implicitWidth, 220)
+                                width: Math.min(implicitWidth, titleBox.maxTitleWidth - 40)
                                 anchors.verticalCenter: parent.verticalCenter
                             }
                         }
@@ -252,47 +290,57 @@ Scope {
                 MediaChip {
                     id: mediaChip
                     anchors.centerIn: parent
-                    availableWidth: Math.max(120, parent.width * 0.3)
+                    // Center in the flexible space between the side modules,
+                    // matching the reference's flex-centered media island.
+                    availableWidth: Math.max(0, Math.min(320,
+                        frame.width - leftModules.width - rightModules.width - 52))
                     player: root.mediaPlayer
+                    cavaLevels: root.cavaLevels
                     textColor: root.fg
                     iconColor: "#38bdf8"
-                    fillColor: root.dark
-                    hoverColor: root.secondary
-                    borderColor: root.fg
-                    highlighted: bar.openPanel === "media"
+                    fillColor: Qt.rgba(root.dark.r, root.dark.g, root.dark.b, 0.4)
+                    hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
+                    borderColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.125)
+                    highlighted: root.openPanel === "media" && root.popupScreen === bar.screen
                     onClicked: bar.toggle("media")
                 }
 
                 // ---- RIGHT: status chips ----
                 Row {
+                    id: rightModules
                     anchors.right: parent.right
                     anchors.rightMargin: 10
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 8
+                    width: implicitWidth
+                    height: 30
+                    spacing: 10
 
                     Chip {
                         id: cpuChipAnchor
-                        glyph: "⟳"; label: sysData.cpuPercent + "%"
+                        glyph: "cpu"; label: sysData.cpuPercent + "%"
+                        horizontalPadding: 8; gap: 6; iconSize: 14
                         fillColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.2)
                         borderColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.4)
                         textColor: root.fg; iconColor: root.accent
-                        highlighted: bar.openPanel === "cpu"
+                        highlighted: root.openPanel === "cpu" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("cpu")
                     }
                     Chip {
                         id: ramChipAnchor
-                        glyph: "▤"; label: sysData.ramUsedGb.toFixed(1) + "GB"
+                        glyph: "memory-stick"; label: sysData.ramUsedGb.toFixed(1) + "GB"
+                        horizontalPadding: 8; gap: 6; iconSize: 14
                         fillColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.2)
                         borderColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.4)
                         textColor: root.fg; iconColor: root.accent
-                        highlighted: bar.openPanel === "ram"
+                        highlighted: root.openPanel === "ram" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("ram")
                     }
                     Chip {
                         id: diskChipAnchor
-                        glyph: "⛁"
+                        glyph: "hard-drive"
+                        horizontalPadding: 8; gap: 6; iconSize: 14
                         label: {
                             const d = sysData.disks.find(x => x.mount === "/");
                             return d ? d.percent + "%" : "—";
@@ -301,19 +349,19 @@ Scope {
                         borderColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.4)
                         textColor: root.fg; iconColor: root.accent
-                        highlighted: bar.openPanel === "disk"
+                        highlighted: root.openPanel === "disk" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("disk")
                     }
 
                     // Wi-Fi icon with status dot
                     Chip {
                         id: wifiChipAnchor
-                        glyph: "≋"; label: ""
-                        width: 28
+                        glyph: "wifi"; label: ""; iconOnly: true
+                        iconSize: 14
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
-                        textColor: root.fg; iconColor: root.fg
-                        highlighted: bar.openPanel === "wifi"
+                        textColor: root.fg; iconColor: root.fg; iconTone: "fg"
+                        highlighted: root.openPanel === "wifi" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("wifi")
                         Rectangle {
                             width: 6; height: 6; radius: 3; color: "#34d399"
@@ -325,12 +373,12 @@ Scope {
                     // Bluetooth icon with status dot
                     Chip {
                         id: btChipAnchor
-                        glyph: "ᛒ"; label: ""
-                        width: 28
+                        glyph: "bluetooth"; label: ""; iconOnly: true
+                        iconSize: 14
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         textColor: root.fg; iconColor: root.accent
-                        highlighted: bar.openPanel === "bt"
+                        highlighted: root.openPanel === "bt" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("bt")
                         Rectangle {
                             width: 6; height: 6; radius: 3; color: "#38bdf8"
@@ -342,73 +390,87 @@ Scope {
                     // Volume
                     Chip {
                         id: volChipAnchor
-                        glyph: "♪"
+                        glyph: sysData.outMuted ? "volume-x" : "volume-2"
                         label: sysData.outMuted ? "Muted" : Math.round(sysData.outVolume * 100) + "%"
+                        iconSize: 14; gap: 4
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         textColor: root.fg; iconColor: root.accent
-                        highlighted: bar.openPanel === "vol"
+                        highlighted: root.openPanel === "vol" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("vol")
                     }
                     // Clock
                     Chip {
                         id: clockChipAnchor
-                        glyph: "◷"
+                        glyph: "clock"
                         label: Qt.formatDateTime(clock.date, "MMM d") + " • " + Qt.formatDateTime(clock.date, "hh:mm")
+                        iconSize: 12; horizontalPadding: 10; gap: 6; mono: false; bold: true
                         fillColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.2)
                         borderColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.4)
                         hoverColor: Qt.rgba(root.accent.r, root.accent.g, root.accent.b, 0.3)
                         textColor: "#ffffff"; iconColor: root.accent
-                        highlighted: bar.openPanel === "clock"
+                        highlighted: root.openPanel === "clock" && root.popupScreen === bar.screen
                         onClicked: bar.toggle("clock")
                     }
                     // Notifications bell
                     Chip {
-                        glyph: "🔔"; label: String(root.notificationCount)
+                        glyph: "bell"; label: ""; iconOnly: true; iconSize: 14
                         fillColor: "transparent"; borderColor: "transparent"
                         hoverColor: Qt.rgba(root.secondary.r, root.secondary.g, root.secondary.b, 0.3)
                         textColor: root.fg; iconColor: root.accent
-                        onClicked: root.notifOpen = !root.notifOpen
+                        Rectangle {
+                            visible: root.notificationCount > 0
+                            anchors.right: parent.right; anchors.top: parent.top
+                            anchors.rightMargin: 1; anchors.topMargin: 1
+                            width: 14; height: 14; radius: 7; color: root.accent
+                            Text { anchors.centerIn: parent; text: root.notificationCount; color: "white"; font.pixelSize: 9; font.bold: true; font.family: root.uiFont }
+                        }
+                        onClicked: {
+                            root.closePopup();
+                            root.notifOpen = !root.notifOpen;
+                        }
                     }
                 }
-            }
 
             // ---- Popups (all anchored to this bar) ----
             CpuPanel {
-                anchor.window: bar; anchorItem: cpuChipAnchor; open: bar.openPanel === "cpu"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: cpuChipAnchor; open: root.openPanel === "cpu" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("cpu", bar.screen)
             }
             RamPanel {
-                anchor.window: bar; anchorItem: ramChipAnchor; open: bar.openPanel === "ram"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: ramChipAnchor; open: root.openPanel === "ram" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("ram", bar.screen)
             }
             DiskPanel {
-                anchor.window: bar; anchorItem: diskChipAnchor; open: bar.openPanel === "disk"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: diskChipAnchor; open: root.openPanel === "disk" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("disk", bar.screen)
             }
             WifiPanel {
-                anchor.window: bar; anchorItem: wifiChipAnchor; open: bar.openPanel === "wifi"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: wifiChipAnchor; open: root.openPanel === "wifi" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("wifi", bar.screen)
             }
             BluetoothPanel {
-                anchor.window: bar; anchorItem: btChipAnchor; open: bar.openPanel === "bt"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: btChipAnchor; open: root.openPanel === "bt" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("bt", bar.screen)
             }
             VolumePanel {
-                anchor.window: bar; anchorItem: volChipAnchor; open: bar.openPanel === "vol"; sys: sysData
-                onDismissed: bar.openPanel = ""
+                anchor.window: bar; anchorItem: volChipAnchor; open: root.openPanel === "vol" && root.popupScreen === bar.screen; sys: sysData
+                onDismissed: root.dismissPopup("vol", bar.screen)
             }
             ClockPanel {
-                anchor.window: bar; anchorItem: clockChipAnchor; open: bar.openPanel === "clock"
+                anchor.window: bar; anchorItem: clockChipAnchor; open: root.openPanel === "clock" && root.popupScreen === bar.screen
                 now: clock.date
                 bgColor: root.bg; fgColor: root.fg; accentColor: root.accent; secondaryColor: root.secondary
-                onDismissed: bar.openPanel = ""
+                onDismissed: root.dismissPopup("clock", bar.screen)
             }
             MediaPanel {
-                anchor.window: bar; anchorItem: mediaChip; open: bar.openPanel === "media"
+                anchor.window: bar; anchorItem: mediaChip; open: root.openPanel === "media" && root.popupScreen === bar.screen
                 player: root.mediaPlayer
+                players: root.mediaPlayers
+                cavaLevels: root.cavaLevels
                 bgColor: root.bg; fgColor: root.fg; accentColor: root.accent; secondaryColor: root.secondary
-                onDismissed: bar.openPanel = ""
+                onDismissed: root.dismissPopup("media", bar.screen)
+                onSourceChangeRequested: root.cycleMediaPlayer()
             }
         }
     }

@@ -48,7 +48,18 @@ Scope {
     property bool wifiOn: true
     property string wifiSsid: "Not connected"
     property int wifiSignal: 0
-    property var wifiNetworks: []   // [{ssid, signal, security, active}]
+    property string wifiSpeed: "—"
+    property string wifiBand: ""
+    property string wifiIp: "—"
+
+    Process {
+        id: wifiIpProc
+        command: ["sh", "-c", "nmcli -g IP4.ADDRESS device show 2>/dev/null | head -1"]
+        stdout: StdioCollector { onStreamFinished: sys.wifiIp = this.text.trim().split("/")[0] || "—" }
+    }
+    function refreshWifiIp() { wifiIpProc.running = true; }
+    property var wifiNetworks: []   // [{ssid, signal, security, active, speed, frequency}]
+    property bool wifiScanning: false
     property bool btOn: true
     property var btDevices: []      // [{mac, name, connected}]
 
@@ -147,12 +158,14 @@ Scope {
             const f = line.split(":");
             if (f.length < 4 || !f[1]) continue;
             const ssid = f[1].replace(/\\:/g, ":");
-            nets.push({ active: f[0] === "yes", ssid: ssid, signal: Number(f[2]) || 0, security: f[3] || "Open" });
+            nets.push({ active: f[0] === "yes", ssid: ssid, signal: Number(f[2]) || 0, security: f[3] || "Open", speed: f[4] || "—", frequency: Number(f[5]) || 0 });
         }
         sys.wifiNetworks = nets;
         const active = nets.find(n => n.active);
         sys.wifiSsid = active ? active.ssid : "Not connected";
         sys.wifiSignal = active ? active.signal : 0;
+        sys.wifiSpeed = active ? active.speed : "—";
+        sys.wifiBand = active ? (active.frequency >= 4900 ? "5 GHz" : (active.frequency >= 2400 ? "2.4 GHz" : "")) : "";
     }
 
     // ---- One-time reads ----
@@ -226,8 +239,32 @@ Scope {
 
     Process {
         id: wifiList
-        command: ["nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL,SECURITY", "dev", "wifi", "list", "--rescan", "no"]
+        command: ["nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL,SECURITY,RATE,FREQ", "dev", "wifi", "list", "--rescan", "no"]
         stdout: StdioCollector { onStreamFinished: sys.parseNmcli(this.text) }
+    }
+    Process {
+        id: wifiScan
+        command: ["nmcli", "-t", "-f", "ACTIVE,SSID,SIGNAL,SECURITY,RATE,FREQ", "dev", "wifi", "list", "--rescan", "yes"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                sys.parseNmcli(this.text);
+                sys.wifiScanning = false;
+            }
+        }
+    }
+    function scanWifi() {
+        if (!sys.wifiOn || wifiScan.running) return;
+        sys.wifiScanning = true;
+        wifiScan.running = true;
+    }
+    Timer {
+        id: wifiScanTimeout
+        interval: 12000
+        onTriggered: sys.wifiScanning = false
+    }
+    onWifiScanningChanged: {
+        if (wifiScanning) wifiScanTimeout.restart();
+        else wifiScanTimeout.stop();
     }
 
     Process {
@@ -282,6 +319,7 @@ Scope {
         wpctlStatus.running = true;
         wifiList.running = true;
         wifiRadio.running = true;
+        refreshWifiIp();
         btPower.running = true;
         btDevs.running = true;
     }

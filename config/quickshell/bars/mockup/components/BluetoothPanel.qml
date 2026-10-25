@@ -5,19 +5,28 @@ BarPanel {
     id: panel
     required property var sys
 
-    bg: sys.bg; fg: sys.fg; accent: sys.accent; secondary: sys.secondary
+    bg: sys.bg
+    fg: sys.fg
+    dark: sys.dark
+    accent: sys.accent
+    secondary: sys.secondary
     panelWidth: 320
+    contentInset: 12
+    contentSpacing: 12
+    cornerRadius: 12
 
     Item {
         width: parent.width
-        height: 28
+        height: 32
+
         Row {
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
             spacing: 8
-            Text { text: "ᛒ"; color: panel.accent; font.pixelSize: 16; anchors.verticalCenter: parent.verticalCenter }
-            Text { text: "Bluetooth"; color: panel.fg; font.bold: true; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+            Icon { name: "bluetooth"; tone: "accent"; size: 16 }
+            Text { text: "Bluetooth"; color: panel.fg; font.bold: true; font.pixelSize: 13; font.family: panel.uiFont }
         }
+
         Toggle {
             id: btSwitch
             anchors.right: parent.right
@@ -26,41 +35,132 @@ BarPanel {
             on: sys.btOn
             onToggled: Quickshell.execDetached(["bluetoothctl", "power", btSwitch.on ? "on" : "off"])
         }
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 1
+            color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.1)
+        }
     }
 
     Column {
         width: parent.width
-        spacing: 2
-        Text { text: "PAIRED"; color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.5); font.pixelSize: 10; font.bold: true }
+        spacing: 4
+
+        Text {
+            text: "CONNECTED"
+            color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.5)
+            font.pixelSize: 10
+            font.bold: true
+            font.family: panel.uiFont
+        }
+
         Repeater {
-            model: sys.btDevices
+            model: sys.btDevices.filter(d => d.connected)
+            Rectangle {
+                required property var modelData
+                width: parent.width
+                height: 40
+                radius: 8
+                color: deviceMa.containsMouse ? Qt.rgba(panel.accent.r, panel.accent.g, panel.accent.b, 0.2) : "transparent"
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 8
+                    Icon { anchors.verticalCenter: parent.verticalCenter; name: "headphones"; tone: "fg"; size: 16 }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text { text: modelData.name; color: panel.fg; font.bold: true; font.pixelSize: 12; font.family: panel.uiFont; elide: Text.ElideRight; width: 175 }
+                        Text { text: "Audio · Connected"; color: "#34d399"; font.pixelSize: 10; font.family: panel.uiFont }
+                    }
+                }
+
+                Row {
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 4
+                    Icon { anchors.verticalCenter: parent.verticalCenter; name: "battery-medium"; tone: "emerald"; size: 14 }
+                    Text { anchors.verticalCenter: parent.verticalCenter; text: modelData.battery !== undefined ? modelData.battery + "%" : "—%"; color: "#34d399"; font.pixelSize: 10; font.family: "monospace" }
+                }
+
+                MouseArea { id: deviceMa; anchors.fill: parent; hoverEnabled: true; z: -1 }
+            }
+        }
+    }
+
+    Column {
+        width: parent.width
+        spacing: 4
+
+        Text {
+            text: "PAIRED"
+            color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.5)
+            font.pixelSize: 10
+            font.bold: true
+            font.family: panel.uiFont
+        }
+
+        Repeater {
+            model: sys.btDevices.filter(d => !d.connected)
             Rectangle {
                 required property var modelData
                 width: parent.width
                 height: 38
-                radius: 6
+                radius: 8
                 color: devMa.containsMouse ? Qt.rgba(panel.accent.r, panel.accent.g, panel.accent.b, 0.2) : "transparent"
-                Column {
-                    anchors.left: parent.left; anchors.leftMargin: 8
+
+                Row {
+                    anchors.left: parent.left
+                    anchors.leftMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    Text { text: modelData.name; color: modelData.connected ? panel.fg : Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.6); font.bold: true; font.pixelSize: 12 }
-                    Text { text: modelData.connected ? "Connected" : "Not connected"; color: modelData.connected ? "#34d399" : Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.4); font.pixelSize: 10 }
+                    spacing: 8
+                    Icon { anchors.verticalCenter: parent.verticalCenter; name: "keyboard"; tone: "muted"; size: 16 }
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text { text: modelData.name; color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.6); font.bold: true; font.pixelSize: 12; font.family: panel.uiFont; elide: Text.ElideRight; width: 175 }
+                        Text { text: "Not connected"; color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.4); font.pixelSize: 10; font.family: panel.uiFont }
+                    }
                 }
+
                 Rectangle {
-                    anchors.right: parent.right; anchors.rightMargin: 8
+                    anchors.right: parent.right
+                    anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    width: connText.implicitWidth + 14; height: 20; radius: 4; color: Qt.rgba(0.04, 0.08, 0.2, 1)
-                    Text { id: connText; anchors.centerIn: parent; text: modelData.connected ? "Disconnect" : "Connect"; color: panel.fg; font.pixelSize: 10 }
-                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor
-                        onClicked: Quickshell.execDetached(["bluetoothctl", modelData.connected ? "disconnect" : "connect", modelData.mac]) }
+                    width: connText.implicitWidth + 16
+                    height: 20
+                    radius: 4
+                    color: panel.dark
+                    Text { id: connText; anchors.centerIn: parent; text: "Connect"; color: panel.fg; font.pixelSize: 10; font.family: panel.uiFont }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Quickshell.execDetached(["bluetoothctl", "connect", modelData.mac])
+                    }
                 }
+
                 MouseArea { id: devMa; anchors.fill: parent; hoverEnabled: true; z: -1 }
             }
         }
-        Text {
-            visible: sys.btDevices.length === 0
-            text: sys.btOn ? "No paired devices" : "Bluetooth is off"
-            color: Qt.rgba(panel.fg.r, panel.fg.g, panel.fg.b, 0.5); font.pixelSize: 11
+    }
+
+    Rectangle {
+        width: parent.width
+        height: 34
+        radius: 8
+        color: pairMa.containsMouse ? Qt.rgba(panel.secondary.r, panel.secondary.g, panel.secondary.b, 0.2) : "transparent"
+        border.width: 1
+        border.color: Qt.rgba(panel.accent.r, panel.accent.g, panel.accent.b, 0.4)
+        Row {
+            anchors.centerIn: parent
+            spacing: 5
+            Icon { name: "plus"; tone: "accent"; size: 14 }
+            Text { text: "Pair new device"; color: panel.fg; font.pixelSize: 11; font.family: panel.uiFont }
         }
+        MouseArea { id: pairMa; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: Quickshell.execDetached(["bluetoothctl", "scan", "on"]) }
     }
 }

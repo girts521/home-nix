@@ -33,6 +33,6 @@ in
       };
     };
 
-    home.packages = [ calendarEvents ];
+    home.packages = [ calendarEvents pkgs.cava pkgs.python3 ];
   };
 }
